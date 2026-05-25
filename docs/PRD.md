@@ -8,6 +8,10 @@
 
 ---
 
+## Implementation Update
+
+The MVP now uses an open demo model instead of account authentication. A visitor enters only a display name to start. Data remains scoped to that guest session, and AI-related actions are limited to 3 per guest per day to reduce abuse.
+
 ## 1. Overview
 
 ### Product Name
@@ -111,28 +115,25 @@ Track applications, improve your resume, and prepare for interviews in one focus
 
 ## 8. MVP Scope
 
-The MVP should prioritize practical, portfolio-worthy features that demonstrate full-stack product thinking, clean UI, database modeling, authentication, and useful AI integration.
+The MVP should prioritize practical, portfolio-worthy features that demonstrate full-stack product thinking, clean UI, session-scoped data modeling, and useful AI integration.
 
-### Feature 1: Authentication
+### Feature 1: Open Guest Workspace
 
 #### Purpose
 
-Allow users to securely access and manage their own job search data.
+Allow visitors to try the app without registration while keeping each browser session scoped to its own workspace.
 
 #### Requirements
 
-- User can register an account.
-- User can log in.
-- User can log out.
-- User sessions persist after refresh.
-- Protected pages require authentication.
-- User data is scoped to the authenticated user.
+- User can enter a display name to start.
+- Guest session persists after refresh.
+- Guest data is scoped to the current guest session.
+- AI-related actions are limited to 3 per day.
 
 #### Suggested Tech
 
-- Clerk
-- Auth.js
-- Supabase Auth
+- HTTP-only session cookie
+- Server-side quota tracking
 
 ---
 
@@ -192,8 +193,8 @@ Wishlist -> Applied -> Screening -> Technical Interview -> HR Interview -> Offer
 
 #### Acceptance Criteria
 
-- A logged-in user can add a new application from the dashboard.
-- A logged-in user can drag or update an application to another status.
+- A visitor can add a new application from the dashboard after entering a display name.
+- A visitor can drag or update an application to another status.
 - Applications persist after page refresh.
 - A user cannot see another user's applications.
 
@@ -309,7 +310,7 @@ Give users a simple overview of their job search progress.
 
 - Dashboard metrics update when applications change.
 - Empty states are shown for new users.
-- Analytics are scoped to the authenticated user.
+- Analytics are scoped to the current guest session.
 
 ---
 
@@ -335,13 +336,7 @@ Help users stay consistent and avoid missed opportunities.
 
 ## 9. Suggested Pages
 
-### Public Pages
-
-- Landing page
-- Login page
-- Register page
-
-### Authenticated Pages
+### App Views
 
 - Dashboard
 - Applications Kanban board
@@ -357,7 +352,7 @@ Help users stay consistent and avoid missed opportunities.
 
 ### Flow 1: Create Application
 
-1. User logs in.
+1. User enters a display name.
 2. User opens dashboard.
 3. User clicks "Add Application".
 4. User enters company, role, source, date, and notes.
@@ -393,13 +388,12 @@ Help users stay consistent and avoid missed opportunities.
 
 ## 11. Data Model
 
-### User
+### Guest
 
 | Field | Type |
 | --- | --- |
 | id | String |
 | name | String |
-| email | String |
 | createdAt | DateTime |
 | updatedAt | DateTime |
 
@@ -408,7 +402,7 @@ Help users stay consistent and avoid missed opportunities.
 | Field | Type |
 | --- | --- |
 | id | String |
-| userId | String |
+| guestId | String |
 | companyName | String |
 | role | String |
 | location | String |
@@ -427,7 +421,7 @@ Help users stay consistent and avoid missed opportunities.
 | Field | Type |
 | --- | --- |
 | id | String |
-| userId | String |
+| guestId | String |
 | applicationId | String |
 | resumeText | Text |
 | jobDescription | Text |
@@ -443,7 +437,7 @@ Help users stay consistent and avoid missed opportunities.
 | Field | Type |
 | --- | --- |
 | id | String |
-| userId | String |
+| guestId | String |
 | applicationId | String |
 | category | String |
 | question | Text |
@@ -631,7 +625,7 @@ Potential product metrics:
 
 ## 19. Open Questions
 
-- Which authentication provider should be used?
+- Should guest sessions later support optional account sync?
 - Should the first version support resume file uploads or pasted text only?
 - Should AI usage be limited per user?
 - Should applications have activity history in the MVP?
@@ -643,7 +637,7 @@ Potential product metrics:
 
 The MVP is complete when a user can:
 
-1. Sign up and log in.
+1. Enter a display name and open the workspace.
 2. Add and manage job applications.
 3. Track applications visually by status.
 4. Open a detailed view for each application.

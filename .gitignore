@@ -3,6 +3,11 @@
 !.env.example
 
 node_modules/
+data/
+.next/
+.playwright-cli/
+tsconfig.tsbuildinfo
+.stitch/*-response.json
 
 .DS_Store
 Thumbs.db
