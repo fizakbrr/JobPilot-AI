@@ -22,7 +22,7 @@ JobPilot AI is a focused productivity dashboard for job seekers. The interface s
 ## 4. Component Stylings
 - **Buttons:** shadcn Button only. Verdant primary fill, ghost/outline secondary states, no outer glow, tactile translate on active.
 - **Inputs:** shadcn Input, Textarea, Select, Checkbox only. Label above, helper or error text below, 44px minimum height.
-- **Cards:** Use for individual applications, metrics, and AI result sections only. Keep radii at 8px or below for operational surfaces.
+- **Cards:** Use for individual applications, metrics, and AI result sections only. Prefer 4px radii, with 2px radii for dense operational surfaces.
 - **Overlays:** shadcn Dialog/Sheet only, never native dialog.
 - **Loaders:** Use layout-matched skeletons, never circular spinners.
 - **Empty States:** Concrete next action with one primary command.
@@ -38,12 +38,12 @@ JobPilot AI is a focused productivity dashboard for job seekers. The interface s
 ## 6. Design System Notes for Stitch Generation
 **DESIGN SYSTEM (REQUIRED):**
 - Platform: Web app, desktop-first with mobile collapse.
-- Theme: Light, calm productivity dashboard, charcoal/slate neutrals with one green accent.
+- Theme: Light precision productivity dashboard, charcoal/slate neutrals with one green accent.
 - Background: Canvas Mist (#F8FAFC).
 - Primary Accent: Verdant Action (#2F8F5B), used sparingly for primary actions and active states.
 - Text Primary: Charcoal Ink (#18181B).
 - Font: Geist Sans for UI, Geist Mono for metrics and timestamps.
-- Layout: Sidebar shell, dense-but-readable dashboard, Kanban lanes, focused AI work panels, 8px-or-less card radii, no neon, no oversized hero treatment.
+- Layout: Sidebar shell, dense dashboard, precision Kanban lanes, focused AI work panels, 2-4px card radii, no neon, no oversized hero treatment.
 
 ## 7. Anti-Patterns
 - No emojis.

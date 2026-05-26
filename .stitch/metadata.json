@@ -12,28 +12,44 @@
   },
   "screens": {
     "dashboard": {
-      "id": "173ac34e84bf4f5da4bc8b6d1013db0d",
-      "sourceScreen": "projects/17154912331944998499/screens/173ac34e84bf4f5da4bc8b6d1013db0d",
+      "id": "441b3f00331142a3b82fcac7c5e7d5bc",
+      "sourceScreen": "projects/17154912331944998499/screens/441b3f00331142a3b82fcac7c5e7d5bc",
       "width": 2560,
       "height": 2048,
-      "html": ".stitch/designs/dashboard.html",
-      "screenshot": ".stitch/designs/dashboard.png"
+      "html": ".stitch/designs/precision-dashboard.html",
+      "screenshot": ".stitch/designs/precision-dashboard.png"
     },
     "kanban": {
-      "id": "44731fdac54445ca9b572b242dacda0d",
-      "sourceScreen": "projects/17154912331944998499/screens/44731fdac54445ca9b572b242dacda0d",
+      "id": "9688e4a95df54801a8866154edfc7c66",
+      "sourceScreen": "projects/17154912331944998499/screens/9688e4a95df54801a8866154edfc7c66",
       "width": 2560,
       "height": 2048,
-      "html": ".stitch/designs/kanban.html",
-      "screenshot": ".stitch/designs/kanban.png"
+      "html": ".stitch/designs/precision-kanban.html",
+      "screenshot": ".stitch/designs/precision-kanban.png"
     },
     "ai-workspace": {
-      "id": "d2043e44a8bc42faa8363be353521061",
-      "sourceScreen": "projects/17154912331944998499/screens/d2043e44a8bc42faa8363be353521061",
+      "id": "4ce7dbf9c4284a179004658f70bbb355",
+      "sourceScreen": "projects/17154912331944998499/screens/4ce7dbf9c4284a179004658f70bbb355",
       "width": 2560,
-      "height": 2768,
-      "html": ".stitch/designs/ai-workspace.html",
-      "screenshot": ".stitch/designs/ai-workspace.png"
+      "height": 2048,
+      "html": ".stitch/designs/precision-ai-workspace.html",
+      "screenshot": ".stitch/designs/precision-ai-workspace.png"
+    },
+    "interview": {
+      "id": "98a34bbfc97744b9a0c5b9297182c935",
+      "sourceScreen": "projects/17154912331944998499/screens/98a34bbfc97744b9a0c5b9297182c935",
+      "width": 2560,
+      "height": 2048,
+      "html": ".stitch/designs/precision-interview.html",
+      "screenshot": ".stitch/designs/precision-interview.png"
+    },
+    "landing": {
+      "id": "214914fc876c4bd988ddc4a82187de03",
+      "sourceScreen": "projects/17154912331944998499/screens/214914fc876c4bd988ddc4a82187de03",
+      "width": 2560,
+      "height": 3034,
+      "html": ".stitch/designs/precision-landing.html",
+      "screenshot": ".stitch/designs/precision-landing.png"
     }
   }
 }

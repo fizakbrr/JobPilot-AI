@@ -1,0 +1,234 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>JobPilot AI - Command Your Career Search</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-high": "#e6e8ea",
+                        "surface-container-highest": "#e0e3e5",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-tint": "#5f5e61",
+                        "secondary-container": "#95f3b6",
+                        "inverse-primary": "#c8c5ca",
+                        "on-primary": "#ffffff",
+                        "redwood-risk": "#B94A48",
+                        "tertiary-fixed": "#d3e4fe",
+                        "whisper-line": "#E2E8F0",
+                        "primary-fixed": "#e4e1e6",
+                        "on-surface": "#191c1e",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed": "#00210f",
+                        "on-surface-variant": "#47464b",
+                        "pure-surface": "#FFFFFF",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#0b1c30",
+                        "secondary-fixed-dim": "#7cda9e",
+                        "secondary": "#006d3e",
+                        "amber-reminder": "#B7791F",
+                        "surface": "#f7f9fb",
+                        "secondary-fixed": "#98f6b9",
+                        "background": "#f7f9fb",
+                        "outline": "#77767b",
+                        "inverse-surface": "#2d3133",
+                        "error": "#ba1a1a",
+                        "on-background": "#191c1e",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "surface-bright": "#f7f9fb",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "verdant-action": "#2F8F5B",
+                        "on-tertiary-container": "#75859d",
+                        "on-secondary": "#ffffff",
+                        "canvas-mist": "#F8FAFC",
+                        "on-primary-container": "#858387",
+                        "on-secondary-fixed-variant": "#00522e",
+                        "primary": "#000000",
+                        "outline-variant": "#c8c5cb",
+                        "primary-fixed-dim": "#c8c5ca",
+                        "on-primary-fixed": "#1b1b1e",
+                        "on-error-container": "#93000a",
+                        "surface-container-low": "#f2f4f6",
+                        "slate-signal": "#64748B",
+                        "charcoal-ink": "#18181B",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed-variant": "#47464a",
+                        "surface-container": "#eceef0",
+                        "primary-container": "#1b1b1e",
+                        "surface-dim": "#d8dadc",
+                        "on-secondary-container": "#007241",
+                        "surface-variant": "#e0e3e5",
+                        "tertiary": "#000000"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "card-padding": "12px",
+                        "gutter": "16px",
+                        "container-margin": "24px",
+                        "stack-gap-dense": "8px",
+                        "stack-gap-ui": "4px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Geist Sans"],
+                        "mono-label": ["Geist Mono"],
+                        "headline-lg": ["Geist Sans"],
+                        "body-md": ["Geist Sans"],
+                        "headline-sm": ["Geist Sans"],
+                        "body-sm": ["Geist Sans"],
+                        "mono-timestamp": ["Geist Mono"],
+                        "mono-metric": ["Geist Mono"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "mono-label": ["12px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                        "headline-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.04em", "fontWeight": "600"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-sm": ["14px", {"lineHeight": "20px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "mono-timestamp": ["11px", {"lineHeight": "14px", "fontWeight": "400"}],
+                        "mono-metric": ["14px", {"lineHeight": "20px", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Geist Sans', sans-serif; }
+        .mono { font-family: 'Geist Mono', monospace; }
+    </style>
+</head>
+<body class="bg-canvas-mist text-on-surface min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<nav class="bg-pure-surface dark:bg-charcoal-ink flex justify-between items-center w-full px-gutter h-12 z-40 sticky top-0 border-b border-whisper-line dark:border-outline-variant flat no shadows">
+<div class="flex items-center gap-4">
+<span class="font-headline-md text-headline-md font-bold text-charcoal-ink dark:text-inverse-on-surface">JobPilot AI</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:translate-y-[1px] duration-100 p-1 rounded-DEFAULT"><span class="material-symbols-outlined">help</span></button>
+<div class="font-body-md text-body-md mono:font-mono-label text-mono-label text-primary dark:text-inverse-primary border border-whisper-line px-2 py-1 rounded-DEFAULT">3/3 AI Quota</div>
+</div>
+</nav>
+<main class="flex-grow flex flex-col items-center w-full max-w-6xl mx-auto px-gutter py-12 gap-16">
+<!-- Hero Section -->
+<section class="flex flex-col items-center text-center w-full gap-stack-gap-dense">
+<div class="bg-surface-container px-3 py-1 rounded-DEFAULT border border-whisper-line mb-4">
+<span class="font-mono-label text-mono-label text-slate-signal uppercase">v2.1.0-stable released</span>
+</div>
+<h1 class="text-5xl font-extrabold tracking-tighter text-charcoal-ink mb-4 max-w-3xl leading-tight">Command Your Career Search</h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl mb-8 text-lg">
+                Accelerate your job hunt with the Momentum Engine. An engineering-grade command center that analyzes resumes, prepares you for technical interviews, and tracks applications with ruthless efficiency.
+            </p>
+<button class="bg-verdant-action text-on-primary font-headline-sm text-headline-sm px-6 py-2 h-9 rounded-DEFAULT flex items-center gap-2 hover:bg-secondary transition-colors active:translate-y-[1px]">
+<span class="">Start for Free (3 actions daily)</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</section>
+<!-- Browser Mockup Visual -->
+<section class="w-full relative group">
+<div class="absolute inset-0 bg-gradient-to-b from-transparent to-canvas-mist z-10 pointer-events-none"></div>
+<div class="bg-pure-surface border border-whisper-line rounded-lg overflow-hidden shadow-sm">
+<!-- Browser Header -->
+<div class="bg-surface-container-low border-b border-whisper-line h-8 flex items-center px-4 gap-2">
+<div class="w-2.5 h-2.5 rounded-full bg-surface-variant"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-surface-variant"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-surface-variant"></div>
+</div>
+<!-- Mockup Content -->
+<div class="h-[400px] w-full bg-cover bg-center" data-alt="A high-fidelity software dashboard interface shown on a computer screen. The dashboard features complex data visualization, charts, and dark-mode analytical tools. The UI is clean, modern, and dense with information, typical of an engineering IDE or advanced analytics platform. Soft studio lighting highlights the sharp contrast of the interface elements against the screen. The overall aesthetic is professional, technical, and precise." style="background-image: url(&quot;{{DATA:IMAGE:IMAGE_33}}&quot;); background-position: center center; background-size: contain; background-repeat: no-repeat;"></div>
+</div>
+</section>
+<!-- Features Bento Grid -->
+<section class="w-full grid grid-cols-1 md:grid-cols-3 gap-container-margin mt-8">
+<!-- Resume Analyzer -->
+<div class="bg-pure-surface border border-whisper-line p-card-padding flex flex-col gap-stack-gap-dense rounded-DEFAULT hover:border-charcoal-ink transition-colors group">
+<div class="w-8 h-8 flex items-center justify-center bg-surface-container-low rounded-DEFAULT mb-2 text-charcoal-ink">
+<span class="material-symbols-outlined">analytics</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-charcoal-ink border-b border-whisper-line pb-2 mb-2">Resume Analyzer</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex-grow">
+                    Deep structural analysis against ATS requirements. Identify missing keywords and optimize impact metrics instantly.
+                </p>
+<div class="mt-4 flex items-center gap-2 font-mono-label text-mono-label text-slate-signal uppercase">
+<span class="material-symbols-outlined text-[14px]">bolt</span>
+<span class="">Real-time parsing</span>
+</div>
+</div>
+<!-- Interview Prep -->
+<div class="bg-pure-surface border border-whisper-line p-card-padding flex flex-col gap-stack-gap-dense rounded-DEFAULT hover:border-charcoal-ink transition-colors group">
+<div class="w-8 h-8 flex items-center justify-center bg-surface-container-low rounded-DEFAULT mb-2 text-charcoal-ink">
+<span class="material-symbols-outlined">video_chat</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-charcoal-ink border-b border-whisper-line pb-2 mb-2">Interview Prep</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex-grow">
+                    Simulate technical and behavioral rounds with specialized AI personas. Receive detailed feedback on cadence and content.
+                </p>
+<div class="mt-4 flex items-center gap-2 font-mono-label text-mono-label text-slate-signal uppercase">
+<span class="material-symbols-outlined text-[14px]">mic</span>
+<span class="">Voice analysis</span>
+</div>
+</div>
+<!-- Application Kanban -->
+<div class="bg-pure-surface border border-whisper-line p-card-padding flex flex-col gap-stack-gap-dense rounded-DEFAULT hover:border-charcoal-ink transition-colors group">
+<div class="w-8 h-8 flex items-center justify-center bg-surface-container-low rounded-DEFAULT mb-2 text-charcoal-ink">
+<span class="material-symbols-outlined">assignment</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-charcoal-ink border-b border-whisper-line pb-2 mb-2">Application Kanban</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex-grow">
+                    Strict grid alignment for tracking status lanes. Manage your pipeline with precision, setting follow-up reminders.
+                </p>
+<div class="mt-4 flex items-center gap-2 font-mono-label text-mono-label text-slate-signal uppercase">
+<span class="material-symbols-outlined text-[14px]">sync</span>
+<span class="">Automated tracking</span>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-pure-surface border-t border-whisper-line mt-auto py-12 px-gutter w-full">
+<div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+<div class="flex flex-col gap-4">
+<span class="font-headline-md text-headline-md font-bold text-charcoal-ink">JobPilot AI</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Engineering-grade tools for modern job seekers.</span>
+</div>
+<div class="flex flex-col gap-2">
+<span class="font-mono-label text-mono-label text-slate-signal uppercase mb-2">Product</span>
+<a class="font-body-sm text-body-sm text-on-surface hover:text-verdant-action" href="#">Features</a>
+<a class="font-body-sm text-body-sm text-on-surface hover:text-verdant-action" href="#">Pricing</a>
+<a class="font-body-sm text-body-sm text-on-surface hover:text-verdant-action" href="#">Changelog</a>
+</div>
+<div class="flex flex-col gap-2">
+<span class="font-mono-label text-mono-label text-slate-signal uppercase mb-2">Resources</span>
+<a class="font-body-sm text-body-sm text-on-surface hover:text-verdant-action" href="#">Documentation</a>
+<a class="font-body-sm text-body-sm text-on-surface hover:text-verdant-action" href="#">API Reference</a>
+<a class="font-body-sm text-body-sm text-on-surface hover:text-verdant-action" href="#">Blog</a>
+</div>
+<div class="flex flex-col gap-2">
+<span class="font-mono-label text-mono-label text-slate-signal uppercase mb-2">Legal</span>
+<a class="font-body-sm text-body-sm text-on-surface hover:text-verdant-action" href="#">Privacy Policy</a>
+<a class="font-body-sm text-body-sm text-on-surface hover:text-verdant-action" href="#">Terms of Service</a>
+</div>
+</div>
+<div class="max-w-6xl mx-auto mt-12 pt-4 border-t border-whisper-line flex justify-between items-center">
+<span class="font-mono-timestamp text-mono-timestamp text-slate-signal">© 2024 JobPilot AI. All rights reserved.</span>
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-slate-signal text-[18px]">code</span>
+<span class="material-symbols-outlined text-slate-signal text-[18px]">terminal</span>
+</div>
+</div>
+</footer>
+
+
+</body></html>

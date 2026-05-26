@@ -8,9 +8,9 @@
 - **Voice:** Calm, precise, encouraging, and operational.
 
 ## 2. Visual Language
-- **Primary:** focused productivity dashboard
+- **Primary:** precision productivity dashboard
 - **Secondary:** calm career command center
-- **Tertiary:** high-clarity AI workspace
+- **Tertiary:** high-clarity AI workspace with dense operational panels
 
 ## 3. Architecture & File Structure
 - **App Root:** `app/`
@@ -23,6 +23,7 @@
 ## 5. Roadmap
 - [x] Generate dashboard and Kanban screens in Stitch.
 - [x] Generate resume analyzer and application detail screens in Stitch.
+- [x] Refresh implementation from new Precision Stitch screens.
 - [x] Implement shadcn UI shell and guest session flow.
 - [x] Implement application CRUD, analytics, reminders, and AI actions.
 - [ ] Add optional export and follow-up email drafting flows.

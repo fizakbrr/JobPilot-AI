@@ -1,0 +1,305 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>AI Workspace - Resume Analyzer</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-high": "#e6e8ea",
+                        "surface-container-highest": "#e0e3e5",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-tint": "#5f5e61",
+                        "secondary-container": "#95f3b6",
+                        "inverse-primary": "#c8c5ca",
+                        "on-primary": "#ffffff",
+                        "redwood-risk": "#B94A48",
+                        "tertiary-fixed": "#d3e4fe",
+                        "whisper-line": "#E2E8F0",
+                        "primary-fixed": "#e4e1e6",
+                        "on-surface": "#191c1e",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed": "#00210f",
+                        "on-surface-variant": "#47464b",
+                        "pure-surface": "#FFFFFF",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#0b1c30",
+                        "secondary-fixed-dim": "#7cda9e",
+                        "secondary": "#006d3e",
+                        "amber-reminder": "#B7791F",
+                        "surface": "#f7f9fb",
+                        "secondary-fixed": "#98f6b9",
+                        "background": "#f7f9fb",
+                        "outline": "#77767b",
+                        "inverse-surface": "#2d3133",
+                        "error": "#ba1a1a",
+                        "on-background": "#191c1e",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "surface-bright": "#f7f9fb",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "verdant-action": "#2F8F5B",
+                        "on-tertiary-container": "#75859d",
+                        "on-secondary": "#ffffff",
+                        "canvas-mist": "#F8FAFC",
+                        "on-primary-container": "#858387",
+                        "on-secondary-fixed-variant": "#00522e",
+                        "primary": "#000000",
+                        "outline-variant": "#c8c5cb",
+                        "primary-fixed-dim": "#c8c5ca",
+                        "on-primary-fixed": "#1b1b1e",
+                        "on-error-container": "#93000a",
+                        "surface-container-low": "#f2f4f6",
+                        "slate-signal": "#64748B",
+                        "charcoal-ink": "#18181B",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed-variant": "#47464a",
+                        "surface-container": "#eceef0",
+                        "primary-container": "#1b1b1e",
+                        "surface-dim": "#d8dadc",
+                        "on-secondary-container": "#007241",
+                        "surface-variant": "#e0e3e5",
+                        "tertiary": "#000000"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "card-padding": "12px",
+                        "gutter": "16px",
+                        "container-margin": "24px",
+                        "stack-gap-dense": "8px",
+                        "stack-gap-ui": "4px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Geist Sans"],
+                        "mono-label": ["Geist Mono"],
+                        "headline-lg": ["Geist Sans"],
+                        "body-md": ["Geist Sans"],
+                        "headline-sm": ["Geist Sans"],
+                        "body-sm": ["Geist Sans"],
+                        "mono-timestamp": ["Geist Mono"],
+                        "mono-metric": ["Geist Mono"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["18px", { "lineHeight": "24px", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                        "mono-label": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.04em", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-sm": ["14px", { "lineHeight": "20px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "mono-timestamp": ["11px", { "lineHeight": "14px", "fontWeight": "400" }],
+                        "mono-metric": ["14px", { "lineHeight": "20px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Fallback fonts if Geist is not loaded */
+        body { font-family: 'Geist Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif; }
+        .font-mono-label, .font-mono-timestamp, .font-mono-metric { font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+        
+        /* Custom Scrollbar for dense UI */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: #c8c5cb; }
+    </style>
+</head>
+<body class="bg-canvas-mist text-on-surface h-screen flex overflow-hidden">
+<!-- SideNavBar -->
+<nav class="bg-pure-surface dark:bg-charcoal-ink flex flex-col h-screen fixed left-0 top-0 z-50 overflow-y-auto h-screen w-64 border-r border-whisper-line dark:border-outline-variant hidden md:flex">
+<div class="p-gutter border-b border-whisper-line flex flex-col gap-stack-gap-dense">
+<h1 class="font-headline-sm text-headline-sm tracking-tight text-on-surface">Command Center</h1>
+<span class="font-mono-timestamp text-mono-timestamp text-on-surface-variant">v2.1.0-stable</span>
+<button class="mt-2 w-full h-[36px] bg-verdant-action text-on-primary font-body-sm text-body-sm rounded flex items-center justify-center gap-2 hover:bg-secondary transition-colors active:translate-y-[1px] duration-75">
+<span class="material-symbols-outlined" style="font-size: 16px;">add</span>
+                New Application
+            </button>
+</div>
+<div class="flex-1 py-stack-gap-dense">
+<a class="flex items-center gap-3 px-gutter py-2 text-on-surface-variant dark:text-surface-variant font-medium hover:bg-surface-container-lowest dark:hover:bg-surface-container transition-all active:translate-y-[1px] duration-75" href="#">
+<span class="material-symbols-outlined">assignment</span>
+<span class="font-body-sm text-body-sm">Applications</span>
+</a>
+<a class="flex items-center gap-3 px-gutter py-2 bg-surface-container-low dark:bg-surface-container-highest text-verdant-action border-r-2 border-verdant-action font-bold hover:bg-surface-container-lowest dark:hover:bg-surface-container transition-all active:translate-y-[1px] duration-75" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-body-sm text-body-sm">Resume Analyzer</span>
+</a>
+<a class="flex items-center gap-3 px-gutter py-2 text-on-surface-variant dark:text-surface-variant font-medium hover:bg-surface-container-lowest dark:hover:bg-surface-container transition-all active:translate-y-[1px] duration-75" href="#">
+<span class="material-symbols-outlined">video_chat</span>
+<span class="font-body-sm text-body-sm">Interview Prep</span>
+</a>
+<a class="flex items-center gap-3 px-gutter py-2 text-on-surface-variant dark:text-surface-variant font-medium hover:bg-surface-container-lowest dark:hover:bg-surface-container transition-all active:translate-y-[1px] duration-75" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-sm text-body-sm">Settings</span>
+</a>
+</div>
+<div class="p-gutter border-t border-whisper-line flex flex-col gap-1">
+<a class="flex items-center gap-3 px-2 py-2 text-on-surface-variant hover:bg-surface-container-lowest transition-colors rounded" href="#">
+<span class="material-symbols-outlined" style="font-size: 18px;">help</span>
+<span class="font-body-sm text-body-sm">Help Center</span>
+</a>
+<a class="flex items-center gap-3 px-2 py-2 text-on-surface-variant hover:bg-surface-container-lowest transition-colors rounded" href="#">
+<span class="material-symbols-outlined" style="font-size: 18px;">logout</span>
+<span class="font-body-sm text-body-sm">Log Out</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col md:ml-64 h-screen overflow-hidden bg-canvas-mist">
+<!-- TopNavBar -->
+<header class="bg-pure-surface dark:bg-charcoal-ink w-full h-12 border-b border-whisper-line dark:border-outline-variant flex justify-between items-center px-gutter z-40 sticky top-0">
+<div class="flex items-center gap-4">
+<h2 class="font-headline-md text-headline-md font-bold text-charcoal-ink dark:text-inverse-on-surface">JobPilot AI</h2>
+<div class="hidden md:flex items-center bg-surface-container-low px-3 py-1 rounded h-[28px] border border-whisper-line">
+<span class="material-symbols-outlined text-on-surface-variant mr-2" style="font-size: 14px;">search</span>
+<input class="bg-transparent border-none p-0 focus:ring-0 font-body-sm text-body-sm w-48 text-on-surface placeholder:text-on-surface-variant" placeholder="Search applications..." type="text">
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-mono-label text-mono-label text-primary dark:text-inverse-primary bg-surface-container-low px-2 py-1 rounded border border-whisper-line">3/3 AI Quota</span>
+<div class="flex gap-2 text-on-surface-variant">
+<button class="hover:bg-surface-container-low p-1 rounded transition-colors"><span class="material-symbols-outlined">notifications</span></button>
+<button class="hover:bg-surface-container-low p-1 rounded transition-colors"><span class="material-symbols-outlined">help</span></button>
+</div>
+</div>
+</header>
+<!-- Workspace Grid -->
+<div class="flex-1 overflow-y-auto p-container-margin">
+<div class="max-w-7xl mx-auto h-full flex flex-col gap-container-margin">
+<!-- Top Panels: Context & Results -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-container-margin">
+<!-- Left Panel: Analysis Context -->
+<div class="lg:col-span-5 bg-pure-surface border border-whisper-line rounded flex flex-col">
+<div class="p-card-padding border-b border-whisper-line flex items-center justify-between bg-surface-bright">
+<h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-slate-signal" style="font-size: 18px;">description</span>
+                                Analysis Context
+                            </h3>
+<span class="font-mono-timestamp text-mono-timestamp text-on-surface-variant">Ready to Analyze</span>
+</div>
+<div class="p-card-padding flex flex-col gap-4 flex-1">
+<div class="flex flex-col gap-stack-gap-ui">
+<label class="font-mono-label text-mono-label text-on-surface-variant">Job Description</label>
+<textarea class="w-full h-32 p-2 bg-surface-bright border border-whisper-line rounded font-body-sm text-body-sm focus:border-verdant-action focus:ring-0 resize-none" placeholder="Paste target job description here..."></textarea>
+</div>
+<div class="flex flex-col gap-stack-gap-ui flex-1">
+<label class="font-mono-label text-mono-label text-on-surface-variant flex justify-between">
+<span>Resume Content</span>
+<button class="text-verdant-action hover:underline">Upload PDF</button>
+</label>
+<textarea class="w-full h-48 lg:h-full p-2 bg-surface-bright border border-whisper-line rounded font-body-sm text-body-sm focus:border-verdant-action focus:ring-0 resize-none" placeholder="Paste current resume text here..."></textarea>
+</div>
+</div>
+<div class="p-card-padding border-t border-whisper-line bg-canvas-mist">
+<button class="w-full h-[36px] bg-charcoal-ink text-on-primary font-headline-sm text-headline-sm rounded flex items-center justify-center gap-2 hover:bg-on-surface transition-colors active:translate-y-[1px] duration-75">
+<span class="material-symbols-outlined" style="font-size: 18px;">bolt</span>
+                                Run Analysis
+                            </button>
+</div>
+</div>
+<!-- Right Panel: Analysis Results -->
+<div class="lg:col-span-7 bg-pure-surface border border-whisper-line rounded flex flex-col">
+<div class="p-card-padding border-b border-whisper-line flex items-center justify-between bg-surface-bright">
+<h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-slate-signal" style="font-size: 18px;">insights</span>
+                                Analysis Results
+                            </h3>
+<button class="font-mono-label text-mono-label text-on-surface-variant hover:text-on-surface border border-whisper-line px-2 py-1 rounded bg-pure-surface">Export Report</button>
+</div>
+<div class="p-card-padding flex flex-col gap-6 overflow-y-auto">
+<!-- Score Banner -->
+<div class="flex items-center gap-6 p-4 bg-canvas-mist border border-whisper-line rounded">
+<div class="w-16 h-16 rounded-full border-4 border-secondary-fixed flex items-center justify-center bg-pure-surface">
+<span class="font-mono-metric text-headline-lg text-verdant-action">82</span>
+</div>
+<div class="flex flex-col gap-1">
+<h4 class="font-headline-sm text-headline-sm text-on-surface">ATS Match Score</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Strong candidate profile. Optimize keywords below to reach 90+.</p>
+</div>
+</div>
+<!-- Keywords Area -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="flex flex-col gap-2">
+<h5 class="font-mono-label text-mono-label text-on-surface-variant uppercase tracking-wider">Missing Keywords</h5>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 bg-error-container text-on-error-container font-mono-label text-mono-label rounded border border-redwood-risk/20">Kubernetes</span>
+<span class="px-2 py-1 bg-error-container text-on-error-container font-mono-label text-mono-label rounded border border-redwood-risk/20">CI/CD Pipeline</span>
+<span class="px-2 py-1 bg-error-container text-on-error-container font-mono-label text-mono-label rounded border border-redwood-risk/20">GraphQL</span>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<h5 class="font-mono-label text-mono-label text-on-surface-variant uppercase tracking-wider">Strengths</h5>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 bg-secondary-fixed-dim text-on-secondary-fixed font-mono-label text-mono-label rounded border border-secondary/20">React.js</span>
+<span class="px-2 py-1 bg-secondary-fixed-dim text-on-secondary-fixed font-mono-label text-mono-label rounded border border-secondary/20">TypeScript</span>
+<span class="px-2 py-1 bg-secondary-fixed-dim text-on-secondary-fixed font-mono-label text-mono-label rounded border border-secondary/20">System Design</span>
+</div>
+</div>
+</div>
+<!-- Rewritten Bullets -->
+<div class="flex flex-col gap-3">
+<h5 class="font-mono-label text-mono-label text-on-surface-variant uppercase tracking-wider border-b border-whisper-line pb-1">Suggested Experience Bullets</h5>
+<div class="bg-surface-bright border border-whisper-line p-3 rounded flex flex-col gap-2">
+<span class="font-mono-timestamp text-mono-timestamp text-slate-signal">Original</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-through decoration-redwood-risk/50">Worked on the main dashboard to make it load faster for users.</p>
+<div class="h-px bg-whisper-line my-1"></div>
+<span class="font-mono-timestamp text-mono-timestamp text-verdant-action">AI Suggestion</span>
+<p class="font-body-sm text-body-sm text-on-surface font-medium">Engineered rendering optimizations for the primary analytics dashboard, reducing initial load time by 40% and improving Lighthouse performance score to 95+.</p>
+<div class="flex justify-end gap-2 mt-1">
+<button class="font-mono-label text-mono-label text-on-surface-variant hover:bg-surface-container p-1 rounded"><span class="material-symbols-outlined" style="font-size: 16px;">content_copy</span></button>
+<button class="font-mono-label text-mono-label text-verdant-action hover:bg-secondary-fixed/20 px-2 py-1 rounded bg-secondary-fixed/10">Apply</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Panel: Interview Prep -->
+<div class="bg-pure-surface border border-whisper-line rounded flex flex-col">
+<div class="p-card-padding border-b border-whisper-line bg-surface-bright flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-slate-signal" style="font-size: 18px;">rule</span>
+                            Interview Prep Checklist
+                        </h3>
+<span class="font-mono-label text-mono-label bg-tertiary-fixed text-on-tertiary-fixed px-2 py-1 rounded">Frontend Engineer Role</span>
+</div>
+<div class="p-card-padding grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 bg-canvas-mist">
+<label class="flex items-start gap-3 p-3 bg-pure-surface border border-whisper-line rounded hover:border-slate-signal cursor-pointer transition-colors">
+<input class="mt-1 w-4 h-4 text-verdant-action border-slate-signal rounded focus:ring-verdant-action" type="checkbox">
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm font-medium text-on-surface">Explain React Fiber</span>
+<span class="font-mono-timestamp text-mono-timestamp text-on-surface-variant mt-1">Core Architecture</span>
+</div>
+</label>
+<label class="flex items-start gap-3 p-3 bg-pure-surface border border-whisper-line rounded hover:border-slate-signal cursor-pointer transition-colors">
+<input class="mt-1 w-4 h-4 text-verdant-action border-slate-signal rounded focus:ring-verdant-action" type="checkbox">
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm font-medium text-on-surface">System Design: News Feed</span>
+<span class="font-mono-timestamp text-mono-timestamp text-on-surface-variant mt-1">Scalability</span>
+</div>
+</label>
+<label class="flex items-start gap-3 p-3 bg-pure-surface border border-whisper-line rounded hover:border-slate-signal cursor-pointer transition-colors">
+<input class="mt-1 w-4 h-4 text-verdant-action border-slate-signal rounded focus:ring-verdant-action" type="checkbox">
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm font-medium text-on-surface">Behavioral: Conflict Resolution</span>
+<span class="font-mono-timestamp text-mono-timestamp text-on-surface-variant mt-1">STAR Method</span>
+</div>
+</label>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

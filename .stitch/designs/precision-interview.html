@@ -1,0 +1,391 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>JobPilot AI - Interview Prep</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Geist:wght@400;500;600;700&display=swap');
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-high": "#e6e8ea",
+                        "surface-container-highest": "#e0e3e5",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-tint": "#5f5e61",
+                        "secondary-container": "#95f3b6",
+                        "inverse-primary": "#c8c5ca",
+                        "on-primary": "#ffffff",
+                        "redwood-risk": "#B94A48",
+                        "tertiary-fixed": "#d3e4fe",
+                        "whisper-line": "#E2E8F0",
+                        "primary-fixed": "#e4e1e6",
+                        "on-surface": "#191c1e",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed": "#00210f",
+                        "on-surface-variant": "#47464b",
+                        "pure-surface": "#FFFFFF",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#0b1c30",
+                        "secondary-fixed-dim": "#7cda9e",
+                        "secondary": "#006d3e",
+                        "amber-reminder": "#B7791F",
+                        "surface": "#f7f9fb",
+                        "secondary-fixed": "#98f6b9",
+                        "background": "#f7f9fb",
+                        "outline": "#77767b",
+                        "inverse-surface": "#2d3133",
+                        "error": "#ba1a1a",
+                        "on-background": "#191c1e",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "surface-bright": "#f7f9fb",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "verdant-action": "#2F8F5B",
+                        "on-tertiary-container": "#75859d",
+                        "on-secondary": "#ffffff",
+                        "canvas-mist": "#F8FAFC",
+                        "on-primary-container": "#858387",
+                        "on-secondary-fixed-variant": "#00522e",
+                        "primary": "#000000",
+                        "outline-variant": "#c8c5cb",
+                        "primary-fixed-dim": "#c8c5ca",
+                        "on-primary-fixed": "#1b1b1e",
+                        "on-error-container": "#93000a",
+                        "surface-container-low": "#f2f4f6",
+                        "slate-signal": "#64748B",
+                        "charcoal-ink": "#18181B",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed-variant": "#47464a",
+                        "surface-container": "#eceef0",
+                        "primary-container": "#1b1b1e",
+                        "surface-dim": "#d8dadc",
+                        "on-secondary-container": "#007241",
+                        "surface-variant": "#e0e3e5",
+                        "tertiary": "#000000"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    spacing: {
+                        "card-padding": "12px",
+                        "gutter": "16px",
+                        "container-margin": "24px",
+                        "stack-gap-dense": "8px",
+                        "stack-gap-ui": "4px"
+                    },
+                    fontFamily: {
+                        "headline-md": ["Geist", "sans-serif"],
+                        "mono-label": ["Geist Mono", "monospace"],
+                        "headline-lg": ["Geist", "sans-serif"],
+                        "body-md": ["Geist", "sans-serif"],
+                        "headline-sm": ["Geist", "sans-serif"],
+                        "body-sm": ["Geist", "sans-serif"],
+                        "mono-timestamp": ["Geist Mono", "monospace"],
+                        "mono-metric": ["Geist Mono", "monospace"]
+                    },
+                    fontSize: {
+                        "headline-md": ["18px", { lineHeight: "24px", letterSpacing: "-0.03em", fontWeight: "600" }],
+                        "mono-label": ["12px", { lineHeight: "16px", letterSpacing: "0.02em", fontWeight: "500" }],
+                        "headline-lg": ["24px", { lineHeight: "32px", letterSpacing: "-0.04em", fontWeight: "600" }],
+                        "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+                        "headline-sm": ["14px", { lineHeight: "20px", letterSpacing: "-0.02em", fontWeight: "600" }],
+                        "body-sm": ["13px", { lineHeight: "18px", fontWeight: "400" }],
+                        "mono-timestamp": ["11px", { lineHeight: "14px", fontWeight: "400" }],
+                        "mono-metric": ["14px", { lineHeight: "20px", fontWeight: "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-canvas-mist text-on-surface font-body-md antialiased min-h-screen flex flex-col md:flex-row overflow-hidden">
+<!-- Mobile TopNavBar -->
+<nav class="md:hidden flex justify-between items-center w-full px-gutter h-12 z-40 sticky top-0 bg-pure-surface border-b border-whisper-line flat no shadows">
+<div class="flex items-center gap-2">
+<span class="font-headline-md text-headline-md font-bold text-charcoal-ink">JobPilot AI</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-body-md text-body-md text-on-surface-variant">3/3 AI Quota</span>
+<div class="flex gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined hover:bg-surface-container-low transition-colors rounded p-1">notifications</span>
+<span class="material-symbols-outlined hover:bg-surface-container-low transition-colors rounded p-1">help</span>
+</div>
+<div class="w-6 h-6 rounded-full bg-surface-container overflow-hidden">
+<img alt="User profile photo" class="w-full h-full object-cover" data-alt="A small circular avatar placeholder image showing a professional headshot. Technical styling suitable for an engineering workspace interface. Neutral lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVVZS-Tc8nAXW2zOyN9gYH3BfOfeVyUqSTLya4dtFOlFeYvkMimVoKrewMTnCe5EpZ4FWfV72aAQ53rm-kFeNGRtThKE794P94Y4tDBQWzu8R9yH5aIdYzdV7KpHCV8jH8iz9iZcXrgDAqh5c1mztSik0BIBVfwe_Ce0vWyxE1P1kWYRS7g4iQGOiXzSQBbasYiFXVmQOdfmpp8PgQqJ4vhn2bYmp9CHQWWfeoWSROGfVbKGk_Fv5SDzmag86GfHGRFDitPa1E7VLI">
+</div>
+</div>
+</nav>
+<!-- Desktop SideNavBar -->
+<aside class="hidden md:flex flex-col h-screen w-64 border-r border-whisper-line flat no shadows bg-pure-surface shrink-0 z-50">
+<div class="p-gutter border-b border-whisper-line">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-8 h-8 rounded bg-charcoal-ink text-pure-surface flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">terminal</span>
+</div>
+<div>
+<div class="font-headline-sm text-headline-sm tracking-tight text-primary">Command Center</div>
+<div class="font-mono-label text-mono-label text-on-surface-variant">v2.1.0-stable</div>
+</div>
+</div>
+<button class="w-full h-9 bg-verdant-action text-on-primary font-mono-label text-mono-label rounded flex items-center justify-center gap-2 active:translate-y-[1px] duration-75">
+<span class="material-symbols-outlined text-[16px]">add</span>
+                New Application
+            </button>
+</div>
+<div class="flex-1 overflow-y-auto py-2">
+<nav class="flex flex-col gap-1 px-2">
+<a class="flex items-center gap-3 px-3 py-2 rounded font-body-md text-body-md text-on-surface-variant font-medium hover:bg-surface-container-lowest transition-all group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary">assignment</span>
+                    Applications
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded font-body-md text-body-md text-on-surface-variant font-medium hover:bg-surface-container-lowest transition-all group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary">analytics</span>
+                    Resume Analyzer
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded bg-surface-container-low text-verdant-action border-r-2 border-verdant-action font-bold active:translate-y-[1px] duration-75" href="#">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">video_chat</span>
+                    Interview Prep
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded font-body-md text-body-md text-on-surface-variant font-medium hover:bg-surface-container-lowest transition-all group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary">settings</span>
+                    Settings
+                </a>
+</nav>
+</div>
+<div class="p-4 border-t border-whisper-line">
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded font-body-md text-body-md text-on-surface-variant font-medium hover:bg-surface-container-lowest transition-all group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary">help</span>
+                    Help Center
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded font-body-md text-body-md text-on-surface-variant font-medium hover:bg-surface-container-lowest transition-all group text-redwood-risk" href="#">
+<span class="material-symbols-outlined text-[20px]">logout</span>
+                    Log Out
+                </a>
+</nav>
+</div>
+</aside>
+<!-- Main Workspace -->
+<main class="flex-1 flex flex-col h-screen overflow-hidden bg-canvas-mist relative">
+<!-- Desktop Header / Search -->
+<header class="hidden md:flex justify-between items-center w-full px-gutter h-12 border-b border-whisper-line bg-pure-surface shrink-0 z-40">
+<div class="flex-1 max-w-md">
+<div class="relative flex items-center h-8 bg-surface-container-low rounded border border-transparent focus-within:border-verdant-action transition-colors px-2">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant mr-2">search</span>
+<input class="bg-transparent border-none w-full h-full text-body-sm font-body-sm text-on-surface focus:outline-none focus:ring-0 placeholder:text-on-surface-variant" placeholder="Search questions, roles..." type="text">
+<div class="font-mono-label text-[10px] text-on-surface-variant bg-surface-container px-1.5 rounded ml-2">⌘K</div>
+</div>
+</div>
+<div class="flex items-center gap-4 ml-4">
+<span class="font-mono-label text-mono-label text-slate-signal border border-whisper-line px-2 py-0.5 rounded">3/3 AI Quota</span>
+<div class="w-7 h-7 rounded-full bg-surface-container overflow-hidden border border-whisper-line">
+<img alt="User profile photo" class="w-full h-full object-cover" data-alt="A small circular avatar placeholder image showing a professional headshot. Technical styling suitable for an engineering workspace interface. Neutral lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC87mCv6krrCtJH1urjmFYqH5ANRp_4WZ7GDI1whxQXlfhrPqMsW-cRmHP2uVy9IfPBAH5uEWLGn59c4760pYAq2PL8i2tu-V1pj21qkQE7cVWbLG9ltPd7v-__iELgFJNfKRQOHH8zc3uclC4Xr7HvApI6nbwrXn8RslijI7BPQyPleQ1AxOdKvjM1ty46o2keQc8jbwuGAgsCg4mtfsmLAvr57zo5nis-QTS6v3dnEQi6dVVjAuDouNBOCgph1Owt35tfaOuE8GXa">
+</div>
+</div>
+</header>
+<!-- Content Grid -->
+<div class="flex-1 flex flex-col md:flex-row overflow-hidden p-container-margin gap-4 max-w-[1600px] mx-auto w-full">
+<!-- Left Column: Practice History -->
+<div class="w-full md:w-64 lg:w-72 flex flex-col gap-4 shrink-0">
+<div class="bg-pure-surface border border-whisper-line rounded flex flex-col h-full overflow-hidden">
+<div class="p-3 border-b border-whisper-line flex justify-between items-center bg-surface-bright">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Practice History</h2>
+<span class="material-symbols-outlined text-[16px] text-slate-signal cursor-pointer hover:text-primary">filter_list</span>
+</div>
+<div class="flex-1 overflow-y-auto p-2 flex flex-col gap-2">
+<!-- History Item Active -->
+<div class="p-card-padding border border-charcoal-ink rounded bg-surface-container-lowest cursor-pointer relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-charcoal-ink"></div>
+<div class="flex justify-between items-start mb-2">
+<span class="font-mono-label text-mono-label text-slate-signal">#SENIOR-BE</span>
+<span class="font-mono-timestamp text-mono-timestamp text-on-surface-variant">TODAY 09:41</span>
+</div>
+<div class="font-body-md text-body-md text-on-surface line-clamp-2 leading-tight">System Design &amp; Tradeoffs</div>
+</div>
+<!-- History Item -->
+<div class="p-card-padding border border-whisper-line rounded bg-pure-surface hover:bg-surface-container-lowest transition-colors cursor-pointer">
+<div class="flex justify-between items-start mb-2">
+<span class="font-mono-label text-mono-label text-slate-signal">#CULTURE-FIT</span>
+<span class="font-mono-timestamp text-mono-timestamp text-on-surface-variant">YEST 14:20</span>
+</div>
+<div class="font-body-md text-body-md text-on-surface line-clamp-2 leading-tight">Conflict Resolution &amp; Leadership</div>
+</div>
+<!-- History Item -->
+<div class="p-card-padding border border-whisper-line rounded bg-pure-surface hover:bg-surface-container-lowest transition-colors cursor-pointer">
+<div class="flex justify-between items-start mb-2">
+<span class="font-mono-label text-mono-label text-slate-signal">#FRONTEND-LEAD</span>
+<span class="font-mono-timestamp text-mono-timestamp text-on-surface-variant">OCT 12</span>
+</div>
+<div class="font-body-md text-body-md text-on-surface line-clamp-2 leading-tight">Performance Optimization Patterns</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Center Column: Active Practice Zone -->
+<div class="flex-1 flex flex-col gap-4 min-w-0">
+<div class="bg-pure-surface border border-whisper-line rounded flex flex-col h-full overflow-hidden">
+<!-- Top Bar -->
+<div class="p-3 border-b border-whisper-line flex justify-between items-center bg-surface-bright shrink-0">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-verdant-action animate-pulse"></div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Active Practice</h2>
+<span class="font-mono-label text-mono-label text-slate-signal ml-2 border border-whisper-line px-1.5 py-0.5 rounded bg-pure-surface">TIMER: 00:00</span>
+</div>
+<div class="flex gap-2">
+<button class="h-8 px-3 border border-whisper-line text-on-surface font-mono-label text-mono-label rounded flex items-center gap-1 hover:bg-surface-container-lowest transition-colors">
+<span class="material-symbols-outlined text-[16px]">skip_next</span>
+                                Skip
+                            </button>
+</div>
+</div>
+<!-- Question Area -->
+<div class="p-4 md:p-6 border-b border-whisper-line bg-surface-container-lowest shrink-0">
+<div class="font-mono-label text-mono-label text-slate-signal mb-2">BEHAVIORAL / PRODUCT SENSE</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface max-w-3xl">"Tell me about a time you had to balance design quality with strict engineering constraints."</h1>
+<div class="mt-4 flex gap-2 flex-wrap">
+<span class="font-mono-label text-mono-label bg-surface-container-low text-on-surface-variant px-2 py-1 rounded">Prioritization</span>
+<span class="font-mono-label text-mono-label bg-surface-container-low text-on-surface-variant px-2 py-1 rounded">Cross-functional</span>
+<span class="font-mono-label text-mono-label bg-surface-container-low text-on-surface-variant px-2 py-1 rounded">Tradeoffs</span>
+</div>
+</div>
+<!-- Answer Draft Area -->
+<div class="flex-1 p-4 md:p-6 flex flex-col gap-4 overflow-y-auto bg-pure-surface">
+<div class="flex justify-between items-end">
+<label class="font-mono-label text-mono-label text-on-surface">DRAFT YOUR RESPONSE (STAR METHOD)</label>
+<button class="text-verdant-action font-mono-label text-mono-label flex items-center gap-1 hover:opacity-80">
+<span class="material-symbols-outlined text-[16px]">auto_awesome</span>
+                                AI Enhance
+                            </button>
+</div>
+<div class="flex flex-col gap-3 flex-1">
+<!-- Situation -->
+<div class="border border-whisper-line rounded group focus-within:border-verdant-action transition-colors bg-surface-bright">
+<div class="px-3 py-1.5 border-b border-whisper-line bg-surface-container-lowest font-mono-label text-[10px] text-slate-signal flex justify-between">
+<span>[S] SITUATION</span>
+<span class="opacity-0 group-focus-within:opacity-100 transition-opacity">Set the context</span>
+</div>
+<textarea class="w-full h-20 p-3 bg-transparent border-none resize-none font-body-md text-body-md text-on-surface focus:ring-0 placeholder:text-on-surface-variant/50" placeholder="Describe the background and context..."></textarea>
+</div>
+<!-- Task -->
+<div class="border border-whisper-line rounded group focus-within:border-verdant-action transition-colors bg-surface-bright">
+<div class="px-3 py-1.5 border-b border-whisper-line bg-surface-container-lowest font-mono-label text-[10px] text-slate-signal flex justify-between">
+<span>[T] TASK</span>
+<span class="opacity-0 group-focus-within:opacity-100 transition-opacity">What was your specific responsibility?</span>
+</div>
+<textarea class="w-full h-16 p-3 bg-transparent border-none resize-none font-body-md text-body-md text-on-surface focus:ring-0 placeholder:text-on-surface-variant/50" placeholder="What needed to be done?"></textarea>
+</div>
+<!-- Action -->
+<div class="border border-whisper-line rounded group focus-within:border-verdant-action transition-colors bg-surface-bright flex-1 min-h-[100px]">
+<div class="px-3 py-1.5 border-b border-whisper-line bg-surface-container-lowest font-mono-label text-[10px] text-slate-signal flex justify-between">
+<span>[A] ACTION</span>
+<span class="opacity-0 group-focus-within:opacity-100 transition-opacity">Detailed steps you took</span>
+</div>
+<textarea class="w-full h-full min-h-[80px] p-3 bg-transparent border-none resize-none font-body-md text-body-md text-on-surface focus:ring-0 placeholder:text-on-surface-variant/50" placeholder="How did you approach the problem? Focus on 'I' not 'We'..."></textarea>
+</div>
+<!-- Result -->
+<div class="border border-whisper-line rounded group focus-within:border-verdant-action transition-colors bg-surface-bright">
+<div class="px-3 py-1.5 border-b border-whisper-line bg-surface-container-lowest font-mono-label text-[10px] text-slate-signal flex justify-between">
+<span>[R] RESULT</span>
+<span class="opacity-0 group-focus-within:opacity-100 transition-opacity">Quantifiable outcomes</span>
+</div>
+<textarea class="w-full h-20 p-3 bg-transparent border-none resize-none font-body-md text-body-md text-on-surface focus:ring-0 placeholder:text-on-surface-variant/50" placeholder="What was the impact? Use metrics if possible."></textarea>
+</div>
+</div>
+</div>
+<!-- Action Footer -->
+<div class="p-3 border-t border-whisper-line bg-surface-bright flex justify-end gap-3 shrink-0">
+<button class="h-9 px-4 border border-whisper-line text-on-surface font-mono-label text-mono-label rounded flex items-center hover:bg-surface-container-lowest transition-colors active:translate-y-[1px]">
+                            Clear Draft
+                        </button>
+<button class="h-9 px-6 bg-verdant-action text-on-primary font-mono-label text-mono-label rounded flex items-center gap-2 hover:bg-opacity-90 transition-colors active:translate-y-[1px]">
+<span class="material-symbols-outlined text-[16px]">grading</span>
+                            Evaluate Response
+                        </button>
+</div>
+</div>
+</div>
+<!-- Right Column: Insights -->
+<div class="w-full md:w-64 lg:w-80 flex flex-col gap-4 shrink-0">
+<!-- Readiness Score Card -->
+<div class="bg-pure-surface border border-whisper-line rounded p-4 flex flex-col gap-3">
+<div class="font-mono-label text-mono-label text-slate-signal uppercase">Overall Readiness</div>
+<div class="flex items-end gap-2">
+<span class="font-headline-lg text-[40px] leading-none text-on-surface tracking-tighter">65%</span>
+<span class="font-mono-label text-mono-label text-amber-reminder pb-1 mb-0.5 flex items-center">
+<span class="material-symbols-outlined text-[14px] mr-0.5">trending_up</span>
+                            +12% wk
+                        </span>
+</div>
+<div class="w-full bg-surface-container-low h-1.5 rounded mt-2 overflow-hidden">
+<div class="bg-amber-reminder h-full rounded" style="width: 65%;"></div>
+</div>
+<div class="grid grid-cols-2 gap-2 mt-2 pt-3 border-t border-whisper-line">
+<div>
+<div class="font-mono-label text-[10px] text-slate-signal">TECHNICAL</div>
+<div class="font-mono-metric text-mono-metric text-on-surface">72%</div>
+</div>
+<div>
+<div class="font-mono-label text-[10px] text-slate-signal">BEHAVIORAL</div>
+<div class="font-mono-metric text-mono-metric text-on-surface">58%</div>
+</div>
+</div>
+</div>
+<!-- Company Insights -->
+<div class="bg-pure-surface border border-whisper-line rounded flex flex-col flex-1 overflow-hidden">
+<div class="p-3 border-b border-whisper-line bg-surface-bright flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary">domain</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Company Insights</h3>
+<span class="ml-auto font-mono-label text-[10px] bg-tertiary-fixed text-on-tertiary-fixed px-1.5 py-0.5 rounded">TARGET</span>
+</div>
+<div class="p-4 flex flex-col gap-4 overflow-y-auto">
+<div class="flex items-center gap-3 mb-2">
+<div class="w-10 h-10 bg-surface-container rounded border border-whisper-line flex items-center justify-center">
+<span class="font-headline-md text-headline-md text-charcoal-ink">A</span>
+</div>
+<div>
+<div class="font-headline-sm text-headline-sm text-on-surface">Acme Corp</div>
+<div class="font-mono-label text-[10px] text-slate-signal">E-COMMERCE • SERIES C</div>
+</div>
+</div>
+<div>
+<h4 class="font-mono-label text-[10px] text-slate-signal mb-2 border-b border-whisper-line pb-1">CULTURE VALUES</h4>
+<ul class="flex flex-col gap-2">
+<li class="flex items-start gap-2">
+<div class="w-1.5 h-1.5 rounded-full bg-slate-signal mt-1.5 shrink-0"></div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Data-driven decisions over intuition. Expect questions on metrics.</span>
+</li>
+<li class="flex items-start gap-2">
+<div class="w-1.5 h-1.5 rounded-full bg-slate-signal mt-1.5 shrink-0"></div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">High autonomy. Emphasis on end-to-end ownership.</span>
+</li>
+</ul>
+</div>
+<div class="mt-2">
+<h4 class="font-mono-label text-[10px] text-slate-signal mb-2 border-b border-whisper-line pb-1">INTERVIEW PATTERNS</h4>
+<div class="flex flex-col gap-2">
+<div class="p-2 bg-surface-container-lowest border border-whisper-line rounded">
+<div class="font-mono-label text-[11px] text-on-surface mb-1">Deep Dive (45m)</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant leading-tight">Focuses heavily on architectural tradeoffs from past projects.</div>
+</div>
+<div class="p-2 bg-surface-container-lowest border border-whisper-line rounded">
+<div class="font-mono-label text-[11px] text-on-surface mb-1">Values Fit (30m)</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant leading-tight">Usually asks for scenarios involving cross-team conflict.</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>
