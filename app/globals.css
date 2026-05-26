@@ -105,13 +105,23 @@
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   * {
     @apply border-border outline-ring/50;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
+    background: #0f1c15;
     letter-spacing: 0;
+  }
+
+  ::selection {
+    background: #dde85f;
+    color: #17201b;
   }
 
   ::-webkit-scrollbar {
@@ -124,7 +134,7 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #e2e8f0;
+    background: #91a99a;
     border-radius: 2px;
   }
 }
@@ -132,6 +142,10 @@
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
   }
 
   .tap-target {

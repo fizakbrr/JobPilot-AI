@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "JobPilot AI",
-  description: "Your personal operating system for job hunting.",
+  description: "A focused career cockpit for applications, resume checks, follow-ups, and interview prep.",
 };
 
 export default function RootLayout({
