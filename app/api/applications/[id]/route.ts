@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireGuest } from "@/lib/guest";
+import { requireGuest } from "@/lib/jobpilot/guest";
 import {
   addActivity,
   listApplicationEvents,
@@ -8,8 +8,8 @@ import {
   nowIso,
   readDatabase,
   transact,
-} from "@/lib/store";
-import { applicationPatchSchema } from "@/lib/validators";
+} from "@/lib/jobpilot/store";
+import { applicationPatchSchema } from "@/lib/jobpilot/validators";
 
 type RouteContext = {
   params: Promise<{ id: string }>;

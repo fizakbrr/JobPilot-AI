@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { generateInterviewQuestionsWithAI, toInterviewRecords } from "@/lib/ai";
-import { requireGuest } from "@/lib/guest";
-import { addActivity, consumeAiQuota, getAiQuota, transact } from "@/lib/store";
-import { interviewGenerateSchema } from "@/lib/validators";
+import { generateInterviewQuestionsWithAI, toInterviewRecords } from "@/lib/jobpilot/ai";
+import { requireGuest } from "@/lib/jobpilot/guest";
+import { addActivity, consumeAiQuota, getAiQuota, transact } from "@/lib/jobpilot/store";
+import { interviewGenerateSchema } from "@/lib/jobpilot/validators";
 
 export async function POST(request: Request) {
   try {

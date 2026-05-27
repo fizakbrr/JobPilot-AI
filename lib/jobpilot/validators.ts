@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { APPLICATION_STATUSES, QUESTION_CATEGORIES } from "@/lib/types";
+import { APPLICATION_STATUSES, QUESTION_CATEGORIES } from "@/lib/jobpilot/types";
 
 export const guestNameSchema = z.object({
   name: z.string().trim().min(2, "Enter at least 2 characters.").max(40, "Keep the name under 40 characters."),

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireGuest } from "@/lib/guest";
-import { nowIso, transact } from "@/lib/store";
-import { interviewPatchSchema } from "@/lib/validators";
+import { requireGuest } from "@/lib/jobpilot/guest";
+import { nowIso, transact } from "@/lib/jobpilot/store";
+import { interviewPatchSchema } from "@/lib/jobpilot/validators";
 
 type RouteContext = {
   params: Promise<{ id: string }>;

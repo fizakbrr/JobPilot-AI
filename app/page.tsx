@@ -1,4 +1,4 @@
-import { JobPilotApp } from "@/components/jobpilot-app";
+import { JobPilotApp } from "@/components/jobpilot/jobpilot-app";
 
 export default function Home() {
   return <JobPilotApp />;

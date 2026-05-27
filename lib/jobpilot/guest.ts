@@ -1,7 +1,7 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { createGuest, getGuestById, updateGuestName } from "@/lib/store";
+import { createGuest, getGuestById, updateGuestName } from "@/lib/jobpilot/store";
 
 const guestCookieName = "jobpilot_guest";
 

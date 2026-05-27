@@ -14,7 +14,7 @@ import {
   type InterviewQuestion,
   type JobPilotDatabase,
   type ResumeAnalysis,
-} from "@/lib/types";
+} from "@/lib/jobpilot/types";
 
 const dataDirectory = process.env.JOBPILOT_DATA_DIR || (process.env.VERCEL ? path.join("/tmp", "jobpilot") : path.join(process.cwd(), "data"));
 const databasePath = path.join(dataDirectory, "jobpilot.json");

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { analyzeResumeWithAI } from "@/lib/ai";
-import { requireGuest } from "@/lib/guest";
-import { addActivity, consumeAiQuota, createId, nowIso, transact } from "@/lib/store";
-import { resumeAnalyzeSchema } from "@/lib/validators";
+import { analyzeResumeWithAI } from "@/lib/jobpilot/ai";
+import { requireGuest } from "@/lib/jobpilot/guest";
+import { addActivity, consumeAiQuota, createId, nowIso, transact } from "@/lib/jobpilot/store";
+import { resumeAnalyzeSchema } from "@/lib/jobpilot/validators";
 
 export async function POST(request: Request) {
   try {

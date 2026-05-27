@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireGuest } from "@/lib/guest";
+import { requireGuest } from "@/lib/jobpilot/guest";
 import {
   addActivity,
   calculateAnalytics,
@@ -9,13 +9,13 @@ import {
   listGuestQuestions,
   nowIso,
   transact,
-} from "@/lib/store";
-import { applicationSchema } from "@/lib/validators";
+} from "@/lib/jobpilot/store";
+import { applicationSchema } from "@/lib/jobpilot/validators";
 
 export async function GET() {
   try {
     const guest = await requireGuest();
-    const database = await import("@/lib/store").then((module) => module.readDatabase());
+    const database = await import("@/lib/jobpilot/store").then((module) => module.readDatabase());
     const applications = listGuestApplications(database, guest.id);
     const analytics = calculateAnalytics(applications);
     const analyses = listGuestAnalyses(database, guest.id);

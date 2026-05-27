@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { createOrUpdateGuestSession, getCurrentGuest } from "@/lib/guest";
-import { getAiQuota, readDatabase } from "@/lib/store";
-import { guestNameSchema } from "@/lib/validators";
+import { createOrUpdateGuestSession, getCurrentGuest } from "@/lib/jobpilot/guest";
+import { getAiQuota, readDatabase } from "@/lib/jobpilot/store";
+import { guestNameSchema } from "@/lib/jobpilot/validators";
 
 export async function GET() {
   const guest = await getCurrentGuest();

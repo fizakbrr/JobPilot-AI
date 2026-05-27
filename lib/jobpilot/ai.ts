@@ -1,9 +1,9 @@
 import "server-only";
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import type { Application, InterviewQuestion, QuestionCategory, ResumeAnalysis } from "@/lib/types";
-import { QUESTION_CATEGORIES } from "@/lib/types";
-import { createId, nowIso } from "@/lib/store";
+import type { Application, InterviewQuestion, QuestionCategory, ResumeAnalysis } from "@/lib/jobpilot/types";
+import { QUESTION_CATEGORIES } from "@/lib/jobpilot/types";
+import { createId, nowIso } from "@/lib/jobpilot/store";
 
 type ResumeFeedback = Pick<
   ResumeAnalysis,

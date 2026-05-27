@@ -42,6 +42,7 @@ For production deployment, set the Upstash Redis REST variables above. Without t
 - Production data is stored through Upstash Redis REST when configured.
 - Demo data falls back to a local or temporary JSON file, which is intentionally ignored by git.
 - Stitch-generated design references live in `.stitch/`.
+- Repository layout is documented in [`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md).
 
 ## Scripts
 

@@ -33,7 +33,7 @@ import {
   type Guest,
   type InterviewQuestion,
   type ResumeAnalysis,
-} from "@/lib/types";
+} from "@/lib/jobpilot/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
