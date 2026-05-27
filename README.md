@@ -26,21 +26,21 @@ Create `.env` from `.env.example`.
 
 ```bash
 GEMINI_API_KEY=
-UPSTASH_REDIS_REST_URL=
-UPSTASH_REDIS_REST_TOKEN=
-JOBPILOT_STORAGE_KEY=jobpilot:database
+JOBPILOT_DATA_DIR=
 ```
 
 If `GEMINI_API_KEY` is omitted, the app falls back to local structured AI-like guidance so the demo still works.
 
-For production deployment, set the Upstash Redis REST variables above. Without them, JobPilot uses a file fallback: `data/jobpilot.json` locally, or `/tmp/jobpilot/jobpilot.json` on Vercel. The fallback keeps demos running, but it is not durable on serverless hosts.
+JobPilot does not use an external database. It stores local JSON data in `data/jobpilot.json` by default. You can set `JOBPILOT_DATA_DIR` to choose a different local folder.
+
+On Vercel-style serverless hosts, the app writes to `/tmp/jobpilot/jobpilot.json` so it can run without a database. That data is temporary and can disappear between deployments or cold starts.
 
 ## Product Notes
 
 - No login or registration: first-time visitors only enter a display name.
 - AI actions are limited to 3 per guest per day.
-- Production data is stored through Upstash Redis REST when configured.
-- Demo data falls back to a local or temporary JSON file, which is intentionally ignored by git.
+- App data is local JSON only. `data/` is intentionally ignored by git.
+- Serverless deployments can run without a database, but their local data is temporary.
 - Stitch-generated design references live in `.stitch/`.
 - Repository layout is documented in [`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md).
 

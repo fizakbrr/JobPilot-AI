@@ -14,7 +14,7 @@ JobPilot keeps framework routes, product code, design references, and generated 
 - `lib/jobpilot/` contains JobPilot domain logic:
   - `ai.ts` for Gemini integration and local AI-style fallback responses.
   - `guest.ts` for name-only guest sessions.
-  - `store.ts` for durable storage, local fallback storage, IDs, analytics, and AI quota handling.
+  - `store.ts` for local JSON storage, IDs, analytics, and AI quota handling.
   - `types.ts` for shared product types.
   - `validators.ts` for API input schemas.
 - `lib/utils.ts` stays at the top level because shadcn/ui components import it directly.
