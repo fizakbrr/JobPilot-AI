@@ -14,6 +14,7 @@ import {
   FileText,
   HelpCircle,
   LayoutDashboard,
+  Loader2,
   Menu,
   PanelRightOpen,
   Plus,
@@ -21,8 +22,16 @@ import {
   Send,
   Settings,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  APP_CONFIG,
+  DEFAULT_DAILY_AI_ACTION_LIMIT,
+  createAiQuotaSnapshot,
+  getQuotaProgressValue,
+  normalizeAiQuota,
+} from "@/lib/jobpilot/config";
 import {
   APPLICATION_STATUSES,
   QUESTION_CATEGORIES,
@@ -34,6 +43,7 @@ import {
   type InterviewQuestion,
   type ResumeAnalysis,
 } from "@/lib/jobpilot/types";
+import { applicationSchema } from "@/lib/jobpilot/validators";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -90,6 +100,9 @@ const initialApplicationForm = {
   notes: "",
   followUpDate: "",
 };
+
+type ApplicationFormState = typeof initialApplicationForm;
+type ApplicationFormErrors = Partial<Record<keyof ApplicationFormState, string>>;
 
 const statusMeta: Record<ApplicationStatus, { dot: string; border: string; label: string; stripe: string; wash: string }> = {
   Wishlist: {
@@ -165,6 +178,59 @@ function followUpState(application: Application) {
   return "scheduled";
 }
 
+function sanitizeSalary(value: string) {
+  return value.replace(/[^\d]/g, "");
+}
+
+function toApplicationPayload(form: ApplicationFormState) {
+  return {
+    ...form,
+    salary: form.salary.trim() ? Number(form.salary) : null,
+    followUpDate: form.followUpDate || null,
+  };
+}
+
+function validateApplicationForm(form: ApplicationFormState) {
+  const parsed = applicationSchema.safeParse(toApplicationPayload(form));
+  if (parsed.success) return { success: true as const, payload: parsed.data, errors: {} };
+
+  const errors: ApplicationFormErrors = {};
+  for (const issue of parsed.error.issues) {
+    const field = issue.path[0] as keyof ApplicationFormState | undefined;
+    if (field && !errors[field]) errors[field] = issue.message;
+  }
+
+  return {
+    success: false as const,
+    errors,
+    message: parsed.error.issues[0]?.message ?? "Check the highlighted fields.",
+  };
+}
+
+function formatAiActionLimit(limit: number) {
+  return `${limit} AI ${limit === 1 ? "action" : "actions"}`;
+}
+
+async function extractPdfText(file: File) {
+  const pdfjs = await import("pdfjs-dist");
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
+
+  const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const pages: string[] = [];
+
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const content = await page.getTextContent();
+    const pageText = content.items
+      .map((item) => ("str" in item ? item.str : ""))
+      .filter(Boolean)
+      .join(" ");
+    pages.push(pageText);
+  }
+
+  return pages.join("\n\n").replace(/\s+\n/g, "\n").trim();
+}
+
 function initials(value: string) {
   return value
     .split(/\s+/)
@@ -183,7 +249,7 @@ async function readJson<T>(response: Response): Promise<T> {
 export function JobPilotApp() {
   const [view, setView] = useState<View>("dashboard");
   const [guest, setGuest] = useState<Guest | null>(null);
-  const [quota, setQuota] = useState<AiQuota>({ limit: 3, used: 0, remaining: 3, date: "" });
+  const [quota, setQuota] = useState<AiQuota>(() => createAiQuotaSnapshot(DEFAULT_DAILY_AI_ACTION_LIMIT));
   const [data, setData] = useState<AppData>({
     applications: [],
     analytics: emptyAnalytics,
@@ -196,13 +262,20 @@ export function JobPilotApp() {
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | "All">("All");
   const [sourceFilter, setSourceFilter] = useState("All");
   const [applicationForm, setApplicationForm] = useState(initialApplicationForm);
+  const [applicationFormErrors, setApplicationFormErrors] = useState<ApplicationFormErrors>({});
+  const [applicationFormError, setApplicationFormError] = useState<string | null>(null);
   const [selectedApplicationId, setSelectedApplicationId] = useState("");
   const [resumeText, setResumeText] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [activeAnalysis, setActiveAnalysis] = useState<ResumeAnalysis | null>(null);
+  const [resumeFileName, setResumeFileName] = useState("");
+  const [resumeFileError, setResumeFileError] = useState<string | null>(null);
+  const [resumeFileLoading, setResumeFileLoading] = useState(false);
+  const [resumeError, setResumeError] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [addSheetOpen, setAddSheetOpen] = useState(false);
+  const normalizedQuota = normalizeAiQuota(quota);
 
   const selectedApplication =
     data.applications.find((application) => application.id === selectedApplicationId) ?? data.applications[0] ?? null;
@@ -239,7 +312,7 @@ export function JobPilotApp() {
   async function refreshSession() {
     const payload = await readJson<{ guest: Guest | null; quota: AiQuota }>(await fetch("/api/session"));
     setGuest(payload.guest);
-    setQuota(payload.quota);
+    setQuota(normalizeAiQuota(payload.quota));
     setName(payload.guest?.name ?? "");
     if (payload.guest) await refreshData();
   }
@@ -264,7 +337,7 @@ export function JobPilotApp() {
         }),
       );
       setGuest(payload.guest);
-      setQuota(payload.quota);
+      setQuota(normalizeAiQuota(payload.quota));
       setName(payload.guest.name);
       await refreshData();
       toast.success("Workspace ready.");
@@ -276,25 +349,35 @@ export function JobPilotApp() {
   }
 
   async function createApplication() {
+    const validation = validateApplicationForm(applicationForm);
+    if (!validation.success) {
+      setApplicationFormErrors(validation.errors);
+      setApplicationFormError(validation.message);
+      toast.error(validation.message);
+      return;
+    }
+
     setBusyAction("create-application");
+    setApplicationFormError(null);
+    setApplicationFormErrors({});
     try {
       await readJson<{ application: Application }>(
         await fetch("/api/applications", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...applicationForm,
-            salary: applicationForm.salary ? Number(applicationForm.salary) : null,
-            followUpDate: applicationForm.followUpDate || null,
-          }),
+          body: JSON.stringify(validation.payload),
         }),
       );
       setApplicationForm(initialApplicationForm);
+      setApplicationFormErrors({});
+      setApplicationFormError(null);
       setAddSheetOpen(false);
       await refreshData();
       toast.success("Application added.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not add application.");
+      const message = error instanceof Error ? error.message : "Could not add application.";
+      setApplicationFormError(message);
+      toast.error(message);
     } finally {
       setBusyAction(null);
     }
@@ -333,6 +416,7 @@ export function JobPilotApp() {
 
   async function analyzeResume() {
     setBusyAction("resume");
+    setResumeError(null);
     try {
       const payload = await readJson<{ analysis: ResumeAnalysis; quota: AiQuota }>(
         await fetch("/api/ai/resume", {
@@ -346,13 +430,47 @@ export function JobPilotApp() {
         }),
       );
       setActiveAnalysis(payload.analysis);
-      setQuota(payload.quota);
+      setQuota(normalizeAiQuota(payload.quota));
       await refreshData();
       toast.success("Resume analysis saved.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not analyze resume.");
+      const message = error instanceof Error ? error.message : "Could not analyze resume.";
+      setResumeError(message);
+      toast.error(message);
     } finally {
       setBusyAction(null);
+    }
+  }
+
+  async function importResumePdf(file: File | null) {
+    if (!file) return;
+
+    setResumeFileError(null);
+    setResumeFileName("");
+
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      const message = "Upload a PDF resume file.";
+      setResumeFileError(message);
+      toast.error(message);
+      return;
+    }
+
+    setResumeFileLoading(true);
+    try {
+      const extractedText = await extractPdfText(file);
+      if (extractedText.length < 80) {
+        throw new Error("Could not read enough text from that PDF. Try a text-based resume PDF or paste the content.");
+      }
+
+      setResumeText(extractedText);
+      setResumeFileName(file.name);
+      toast.success("Resume PDF imported.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not read that PDF.";
+      setResumeFileError(message);
+      toast.error(message);
+    } finally {
+      setResumeFileLoading(false);
     }
   }
 
@@ -371,7 +489,7 @@ export function JobPilotApp() {
           body: JSON.stringify({ applicationId: selectedApplication.id }),
         }),
       );
-      setQuota(payload.quota);
+      setQuota(normalizeAiQuota(payload.quota));
       await refreshData();
       toast.success(`${payload.questions.length} questions generated.`);
     } catch (error) {
@@ -404,7 +522,7 @@ export function JobPilotApp() {
     setMobileNavOpen(false);
   };
 
-  const nav = <Navigation view={view} setView={setView} onNavigate={() => setMobileNavOpen(false)} onAdd={openAdd} quota={quota} />;
+  const nav = <Navigation view={view} setView={setView} onNavigate={() => setMobileNavOpen(false)} onAdd={openAdd} quota={normalizedQuota} />;
 
   return (
     <div className="relative min-h-dvh overflow-hidden bg-[#0F1C15] text-[#17201B]">
@@ -413,7 +531,7 @@ export function JobPilotApp() {
           <div className="absolute inset-x-0 top-0 h-1 bg-[#1B7A4E]" />
           <DialogHeader>
             <div className="mb-4 flex h-12 w-40 items-center">
-              <Image src="/brand/logo-complete.svg" alt="JobPilot AI" width={154} height={50} className="h-auto w-full" priority />
+              <Image src="/brand/logo-complete.svg" alt={APP_CONFIG.name} width={154} height={50} className="h-auto w-full" priority />
             </div>
             <DialogTitle className="text-[22px] tracking-[-0.04em]">Name your command desk</DialogTitle>
             <DialogDescription className="text-[#53675A]">
@@ -428,7 +546,7 @@ export function JobPilotApp() {
               id="guest-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="Hafiz"
+              placeholder={APP_CONFIG.defaultGuestNamePlaceholder}
               className="h-11 rounded-xl border-[#DDE6D7] bg-white"
             />
           </div>
@@ -451,7 +569,7 @@ export function JobPilotApp() {
         <main className="min-w-0 bg-[#EEF3EA] lg:rounded-l-[28px] lg:shadow-[-18px_0_60px_-42px_rgba(0,0,0,0.85)]">
           <TopBar
             guest={guest}
-            quota={quota}
+            quota={normalizedQuota}
             search={search}
             setSearch={setSearch}
             mobileNavOpen={mobileNavOpen}
@@ -462,7 +580,7 @@ export function JobPilotApp() {
             {view === "dashboard" ? (
               <DashboardView
                 data={data}
-                quota={quota}
+                quota={normalizedQuota}
                 upcomingFollowUps={upcomingFollowUps}
                 setView={setView}
                 setSelectedApplicationId={setSelectedApplicationId}
@@ -479,6 +597,8 @@ export function JobPilotApp() {
                 sources={sources}
                 form={applicationForm}
                 setForm={setApplicationForm}
+                errors={applicationFormErrors}
+                formError={applicationFormError}
                 createApplication={createApplication}
                 updateApplication={updateApplication}
                 deleteApplication={deleteApplication}
@@ -499,7 +619,12 @@ export function JobPilotApp() {
                 analyzeResume={analyzeResume}
                 busy={busyAction === "resume"}
                 analysis={activeAnalysis ?? data.analyses[0] ?? null}
-                quota={quota}
+                quota={normalizedQuota}
+                importResumePdf={importResumePdf}
+                resumeFileName={resumeFileName}
+                resumeFileError={resumeFileError}
+                resumeFileLoading={resumeFileLoading}
+                resumeError={resumeError}
               />
             ) : null}
             {view === "interviews" ? (
@@ -511,11 +636,11 @@ export function JobPilotApp() {
                 generateInterviewQuestions={generateInterviewQuestions}
                 updateQuestion={updateQuestion}
                 busy={busyAction === "interviews"}
-                quota={quota}
+                quota={normalizedQuota}
               />
             ) : null}
             {view === "settings" ? (
-              <SettingsView guest={guest} quota={quota} name={name} setName={setName} saveName={saveName} />
+              <SettingsView guest={guest} quota={normalizedQuota} name={name} setName={setName} saveName={saveName} />
             ) : null}
           </div>
         </main>
@@ -573,11 +698,11 @@ function Navigation({
     <div className="flex h-full min-h-dvh flex-col">
       <div className="relative overflow-hidden border-b border-white/10 p-5">
         <div className="relative w-full pr-3">
-          <Image src="/brand/logo-complete.svg" alt="JobPilot AI" width={214} height={69} className="h-auto w-full brightness-0 invert" priority />
+          <Image src="/brand/logo-complete.svg" alt={APP_CONFIG.name} width={214} height={69} className="h-auto w-full brightness-0 invert" priority />
         </div>
         <div className="relative mt-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-[13px] font-semibold tracking-[-0.01em] text-[#EAF4EC]">Career command desk</p>
+            <p className="text-[13px] font-semibold tracking-[-0.01em] text-[#EAF4EC]">{APP_CONFIG.workspaceSubtitle}</p>
             <p className="font-mono text-[11px] text-[#91A99A]">open-demo / live pipeline</p>
           </div>
           <span className="rounded-full border border-[#D26F48]/35 bg-[#D26F48]/10 px-2 py-1 font-mono text-[10px] text-[#FFD8C7]">
@@ -614,9 +739,9 @@ function Navigation({
       </div>
       <div className="border-t border-white/10 p-4">
         <div className="rounded-2xl border border-white/10 bg-white/6 p-4 backdrop-blur">
-          <p className="font-mono text-[11px] font-semibold uppercase text-[#EAF4EC]">Guest mode</p>
-          <p className="mt-1 text-[13px] leading-5 text-[#91A99A]">No login. Three AI actions reset daily.</p>
-          <Progress value={(quota.remaining / quota.limit) * 100} className="mt-4 h-1.5 bg-white/10 [&_[data-slot=progress-indicator]]:bg-[#DDE85F]" />
+          <p className="font-mono text-[11px] font-semibold uppercase text-[#EAF4EC]">{APP_CONFIG.guestModeTitle}</p>
+          <p className="mt-1 text-[13px] leading-5 text-[#91A99A]">No login. {formatAiActionLimit(quota.limit)} reset daily.</p>
+          <Progress value={getQuotaProgressValue(quota, "remaining")} className="mt-4 h-1.5 bg-white/10 [&_[data-slot=progress-indicator]]:bg-[#DDE85F]" />
         </div>
       </div>
     </div>
@@ -645,7 +770,7 @@ function TopBar({
           <Menu className="size-5" />
         </Button>
         <div className="hidden h-10 w-40 items-center md:flex">
-          <Image src="/brand/logo-complete.svg" alt="JobPilot AI" width={154} height={50} className="h-auto w-full" />
+          <Image src="/brand/logo-complete.svg" alt={APP_CONFIG.name} width={154} height={50} className="h-auto w-full" />
         </div>
         <div className="hidden h-11 w-full max-w-md items-center rounded-2xl border border-[#DDE6D7] bg-white/82 px-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] md:flex">
           <Search className="mr-2 size-4 text-[#53675A]" />
@@ -884,6 +1009,8 @@ function ApplicationsView({
   sources,
   form,
   setForm,
+  errors,
+  formError,
   createApplication,
   updateApplication,
   deleteApplication,
@@ -897,8 +1024,10 @@ function ApplicationsView({
   sourceFilter: string;
   setSourceFilter: (source: string) => void;
   sources: string[];
-  form: typeof initialApplicationForm;
-  setForm: (form: typeof initialApplicationForm) => void;
+  form: ApplicationFormState;
+  setForm: (form: ApplicationFormState) => void;
+  errors: ApplicationFormErrors;
+  formError: string | null;
   createApplication: () => void;
   updateApplication: (id: string, patch: Partial<Application>) => void;
   deleteApplication: (id: string) => void;
@@ -953,12 +1082,19 @@ function ApplicationsView({
                   New Application
                 </Button>
               </SheetTrigger>
-              <SheetContent className="w-full overflow-y-auto border-[#D8E3D4] bg-[#F8FAF3] sm:max-w-lg">
-                <SheetHeader>
+              <SheetContent className="w-full overflow-y-auto border-[#D8E3D4] bg-[#F8FAF3] sm:max-w-3xl xl:max-w-4xl">
+                <SheetHeader className="border-b border-[#D8E3D4] px-5 py-5">
                   <SheetTitle className="tracking-[-0.04em]">Add application</SheetTitle>
                   <SheetDescription>Capture the opportunity while the details are fresh.</SheetDescription>
                 </SheetHeader>
-                <ApplicationForm form={form} setForm={setForm} onSave={createApplication} busy={busyAction === "create-application"} />
+                <ApplicationForm
+                  form={form}
+                  setForm={setForm}
+                  errors={errors}
+                  formError={formError}
+                  onSave={createApplication}
+                  busy={busyAction === "create-application"}
+                />
               </SheetContent>
             </Sheet>
           </div>
@@ -1027,30 +1163,57 @@ function ApplicationsView({
 function ApplicationForm({
   form,
   setForm,
+  errors,
+  formError,
   onSave,
   busy,
 }: {
-  form: typeof initialApplicationForm;
-  setForm: (form: typeof initialApplicationForm) => void;
+  form: ApplicationFormState;
+  setForm: (form: ApplicationFormState) => void;
+  errors: ApplicationFormErrors;
+  formError: string | null;
   onSave: () => void;
   busy: boolean;
 }) {
-  const update = (key: keyof typeof initialApplicationForm, value: string) => setForm({ ...form, [key]: value });
+  const update = (key: keyof ApplicationFormState, value: string) => setForm({ ...form, [key]: value });
 
   return (
-    <div className="mt-6 grid gap-4">
-      <Field label="Company" value={form.companyName} onChange={(value) => update("companyName", value)} placeholder="Linear" />
-      <Field label="Role" value={form.role} onChange={(value) => update("role", value)} placeholder="Frontend Engineer" />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Location" value={form.location} onChange={(value) => update("location", value)} placeholder="Remote" />
-        <Field label="Salary" value={form.salary} onChange={(value) => update("salary", value)} placeholder="118000" />
+    <div className="grid gap-5 px-5 pb-6 pt-2">
+      {formError ? <ErrorNotice message={formError} /> : null}
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Field
+          label="Company"
+          value={form.companyName}
+          onChange={(value) => update("companyName", value)}
+          placeholder="Company name"
+          error={errors.companyName}
+        />
+        <Field
+          label="Role"
+          value={form.role}
+          onChange={(value) => update("role", value)}
+          placeholder="Target role"
+          error={errors.role}
+        />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Source" value={form.sourcePlatform} onChange={(value) => update("sourcePlatform", value)} placeholder="Referral" />
-        <Field label="Job URL" value={form.jobUrl} onChange={(value) => update("jobUrl", value)} placeholder="https://..." />
+        <Field label="Location" value={form.location} onChange={(value) => update("location", value)} placeholder="Remote" error={errors.location} />
+        <Field
+          label="Salary"
+          value={form.salary}
+          onChange={(value) => update("salary", sanitizeSalary(value))}
+          placeholder="118000"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          error={errors.salary}
+        />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Application date" type="date" value={form.applicationDate} onChange={(value) => update("applicationDate", value)} />
+        <Field label="Source" value={form.sourcePlatform} onChange={(value) => update("sourcePlatform", value)} placeholder="Referral" error={errors.sourcePlatform} />
+        <Field label="Job URL" value={form.jobUrl} onChange={(value) => update("jobUrl", value)} placeholder="https://..." error={errors.jobUrl} />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Application date" type="date" value={form.applicationDate} onChange={(value) => update("applicationDate", value)} error={errors.applicationDate} />
         <div className="grid gap-2">
           <Label className="font-mono text-[12px] uppercase text-[#53675A]">Status</Label>
           <Select value={form.status} onValueChange={(value) => update("status", value)}>
@@ -1065,16 +1228,19 @@ function ApplicationForm({
               ))}
             </SelectContent>
           </Select>
+          {errors.status ? <FieldError message={errors.status} /> : null}
         </div>
       </div>
-      <Field label="Follow-up date" type="date" value={form.followUpDate} onChange={(value) => update("followUpDate", value)} />
+      <Field label="Follow-up date" type="date" value={form.followUpDate} onChange={(value) => update("followUpDate", value)} error={errors.followUpDate} />
       <div className="grid gap-2">
         <Label className="font-mono text-[12px] uppercase text-[#53675A]">Notes</Label>
         <Textarea
           value={form.notes}
           onChange={(event) => update("notes", event.target.value)}
+          aria-invalid={Boolean(errors.notes)}
           className="min-h-28 rounded-2xl border-[#D8E3D4] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
         />
+        {errors.notes ? <FieldError message={errors.notes} /> : null}
       </div>
       <Button
         onClick={onSave}
@@ -1093,23 +1259,33 @@ function Field({
   onChange,
   placeholder,
   type = "text",
+  inputMode,
+  pattern,
+  error,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   type?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+  pattern?: string;
+  error?: string;
 }) {
   return (
     <div className="grid gap-2">
       <Label className="font-mono text-[12px] uppercase text-[#53675A]">{label}</Label>
       <Input
         type={type}
+        inputMode={inputMode}
+        pattern={pattern}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
+        aria-invalid={Boolean(error)}
         className="h-11 rounded-2xl border-[#D8E3D4] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
       />
+      {error ? <FieldError message={error} /> : null}
     </div>
   );
 }
@@ -1247,6 +1423,11 @@ function ResumeView({
   busy,
   analysis,
   quota,
+  importResumePdf,
+  resumeFileName,
+  resumeFileError,
+  resumeFileLoading,
+  resumeError,
 }: {
   applications: Application[];
   selectedApplicationId: string;
@@ -1259,6 +1440,11 @@ function ResumeView({
   busy: boolean;
   analysis: ResumeAnalysis | null;
   quota: AiQuota;
+  importResumePdf: (file: File | null) => void | Promise<void>;
+  resumeFileName: string;
+  resumeFileError: string | null;
+  resumeFileLoading: boolean;
+  resumeError: string | null;
 }) {
   const selectedApplication = applications.find((application) => application.id === selectedApplicationId);
 
@@ -1312,6 +1498,7 @@ function ResumeView({
         <section className="overflow-hidden rounded-[28px] border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-48px_rgba(15,28,21,0.7)]">
           <SectionHeader title="Analysis context" icon={<FileText className="size-4 text-[#53675A]" />} action="ready" />
           <div className="grid gap-4 p-4">
+            {resumeError ? <ErrorNotice message={resumeError} /> : null}
             <div className="grid gap-2">
               <Label className="font-mono text-[12px] uppercase text-[#53675A]">Job description</Label>
               <Textarea
@@ -1323,6 +1510,35 @@ function ResumeView({
             </div>
             <div className="grid gap-2">
               <Label className="font-mono text-[12px] uppercase text-[#53675A]">Resume content</Label>
+              <div className="rounded-2xl border border-dashed border-[#BFD1C4] bg-white/72 p-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[#E6EFD9] text-[#17201B]">
+                      {resumeFileLoading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+                    </div>
+                    <div>
+                      <p className="text-[13px] font-semibold text-[#17201B]">Upload resume PDF</p>
+                      <p className="mt-1 text-[12px] leading-5 text-[#53675A]">
+                        Text is extracted into the resume field before analysis.
+                      </p>
+                    </div>
+                  </div>
+                  <Input
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    disabled={resumeFileLoading}
+                    onChange={(event) => {
+                      void importResumePdf(event.target.files?.[0] ?? null);
+                      event.currentTarget.value = "";
+                    }}
+                    className="h-11 rounded-2xl border-[#D8E3D4] bg-[#F8FAF3] text-[13px] file:mr-3 file:rounded-xl file:bg-[#17201B] file:px-3 file:text-[#F7FAF1] sm:max-w-72"
+                  />
+                </div>
+                {resumeFileName ? (
+                  <p className="mt-3 rounded-xl bg-[#F4F8EF] px-3 py-2 font-mono text-[11px] text-[#53675A]">{resumeFileName}</p>
+                ) : null}
+                {resumeFileError ? <div className="mt-3"><FieldError message={resumeFileError} /></div> : null}
+              </div>
               <Textarea
                 value={resumeText}
                 onChange={(event) => setResumeText(event.target.value)}
@@ -1574,7 +1790,7 @@ function SettingsView({
       <section className="relative overflow-hidden rounded-[30px] bg-[#17201B] p-5 text-[#F7FAF1] shadow-[0_28px_80px_-54px_rgba(7,24,14,0.9)]">
         <div className="relative">
           <div className="mb-4 flex h-12 w-40 items-center">
-            <Image src="/brand/logo-complete.svg" alt="JobPilot AI" width={154} height={50} className="h-auto w-full brightness-0 invert" />
+            <Image src="/brand/logo-complete.svg" alt={APP_CONFIG.name} width={154} height={50} className="h-auto w-full brightness-0 invert" />
           </div>
           <h1 className="max-w-2xl text-[36px] font-semibold leading-[0.98] tracking-[-0.06em] md:text-[54px]">
             Workspace settings without account friction.
@@ -1611,9 +1827,9 @@ function SettingsView({
                 {quota.remaining} left
               </div>
             </div>
-            <Progress value={(quota.used / quota.limit) * 100} className="mt-5 h-2 rounded-full" />
+            <Progress value={getQuotaProgressValue(quota)} className="mt-5 h-2 rounded-full" />
             <p className="mt-4 rounded-2xl border border-[#D8E3D4] bg-[#F4F8EF] p-3 text-[13px] leading-6 text-[#53675A]">
-              AI actions are limited to three per day for each guest workspace. Tracking, notes, and manual edits keep working after the limit.
+              AI actions are limited to {quota.limit} per day for each guest workspace. Tracking, notes, and manual edits keep working after the limit.
             </p>
           </div>
         </section>
@@ -1697,6 +1913,23 @@ function QuotaBlocked() {
       <AlertTriangle className="mt-0.5 size-4 shrink-0" />
       <span>Daily AI limit reached. Come back tomorrow to run more AI actions.</span>
     </div>
+  );
+}
+
+function ErrorNotice({ message }: { message: string }) {
+  return (
+    <div role="alert" className="flex items-start gap-2 rounded-2xl border border-[#B94A48]/30 bg-[#FFF4F2] p-3 text-[13px] leading-5 text-[#B94A48]">
+      <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+      <span>{message}</span>
+    </div>
+  );
+}
+
+function FieldError({ message }: { message: string }) {
+  return (
+    <p role="alert" className="text-[12px] leading-5 text-[#B94A48]">
+      {message}
+    </p>
   );
 }
 

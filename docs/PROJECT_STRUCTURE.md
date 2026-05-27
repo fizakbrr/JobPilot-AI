@@ -13,11 +13,14 @@ JobPilot keeps framework routes, product code, design references, and generated 
 - `components/ui/` contains shadcn/ui primitives. Product code should compose these instead of using raw native interactive elements.
 - `lib/jobpilot/` contains JobPilot domain logic:
   - `ai.ts` for Gemini integration and local AI-style fallback responses.
+  - `config.ts` for app metadata and configurable AI quota defaults.
   - `guest.ts` for name-only guest sessions.
+  - `route-errors.ts` for consistent API error responses.
   - `store.ts` for local JSON storage, IDs, analytics, and AI quota handling.
   - `types.ts` for shared product types.
   - `validators.ts` for API input schemas.
 - `lib/utils.ts` stays at the top level because shadcn/ui components import it directly.
+- `content/jobpilot/` contains editable local starter data that seeds new guest workspaces.
 
 ## Brand And Design Assets
 

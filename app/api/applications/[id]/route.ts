@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireGuest } from "@/lib/jobpilot/guest";
+import { routeErrorResponse, validationErrorResponse } from "@/lib/jobpilot/route-errors";
 import {
   addActivity,
   listApplicationEvents,
@@ -32,8 +33,8 @@ export async function GET(_request: Request, context: RouteContext) {
       analyses: listGuestAnalyses(database, guest.id).filter((analysis) => analysis.applicationId === id),
       questions: listGuestQuestions(database, guest.id).filter((question) => question.applicationId === id),
     });
-  } catch {
-    return NextResponse.json({ error: "Enter your name to start." }, { status: 401 });
+  } catch (error) {
+    return routeErrorResponse(error, "Could not load application.");
   }
 }
 
@@ -43,7 +44,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     const { id } = await context.params;
     const parsed = applicationPatchSchema.safeParse(await request.json());
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid update." }, { status: 400 });
+      return validationErrorResponse(parsed.error.issues[0]?.message ?? "Invalid update.");
     }
 
     const application = await transact((database) => {
@@ -81,8 +82,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     return NextResponse.json({ application });
-  } catch {
-    return NextResponse.json({ error: "Enter your name to start." }, { status: 401 });
+  } catch (error) {
+    return routeErrorResponse(error, "Could not update application.");
   }
 }
 
@@ -110,7 +111,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: "Enter your name to start." }, { status: 401 });
+  } catch (error) {
+    return routeErrorResponse(error, "Could not delete application.");
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { generateInterviewQuestionsWithAI, toInterviewRecords } from "@/lib/jobpilot/ai";
 import { requireGuest } from "@/lib/jobpilot/guest";
+import { routeErrorResponse, validationErrorResponse } from "@/lib/jobpilot/route-errors";
 import { addActivity, consumeAiQuota, getAiQuota, transact } from "@/lib/jobpilot/store";
 import { interviewGenerateSchema } from "@/lib/jobpilot/validators";
 
@@ -9,7 +10,7 @@ export async function POST(request: Request) {
     const guest = await requireGuest();
     const parsed = interviewGenerateSchema.safeParse(await request.json());
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid interview request." }, { status: 400 });
+      return validationErrorResponse(parsed.error.issues[0]?.message ?? "Invalid interview request.");
     }
 
     const quotaCheck = await transact((database) => {
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ ...result, quota: quotaCheck.quota });
-  } catch {
-    return NextResponse.json({ error: "Enter your name to start." }, { status: 401 });
+  } catch (error) {
+    return routeErrorResponse(error, "Could not generate interview questions.");
   }
 }

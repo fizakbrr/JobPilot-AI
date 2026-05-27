@@ -9,7 +9,10 @@ export const applicationSchema = z.object({
   companyName: z.string().trim().min(1, "Company is required."),
   role: z.string().trim().min(1, "Role is required."),
   location: z.string().trim().optional().default(""),
-  salary: z.coerce.number().positive().nullable().optional(),
+  salary: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? null : value),
+    z.coerce.number("Salary must be a number.").positive("Salary must be greater than 0.").nullable(),
+  ),
   sourcePlatform: z.string().trim().optional().default(""),
   jobUrl: z.string().trim().url("Enter a valid job URL.").or(z.literal("")).optional().default(""),
   applicationDate: z.string().trim().min(1, "Application date is required."),

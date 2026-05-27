@@ -1,0 +1,62 @@
+[
+  {
+    "companyName": "Linear",
+    "role": "Frontend Engineer",
+    "location": "Remote",
+    "salary": 118000,
+    "sourcePlatform": "Referral",
+    "jobUrl": "https://linear.app/careers",
+    "applicationDateDaysAgo": 8,
+    "status": "Technical Interview",
+    "notes": "Ask about design systems and product engineering workflow.",
+    "followUpDateDaysFromNow": 1
+  },
+  {
+    "companyName": "Vercel",
+    "role": "Junior Developer Advocate",
+    "location": "Remote",
+    "salary": 98000,
+    "sourcePlatform": "Company site",
+    "jobUrl": "https://vercel.com/careers",
+    "applicationDateDaysAgo": 4,
+    "status": "Screening",
+    "notes": "Prepare examples around Next.js, demos, and documentation.",
+    "followUpDateDaysFromNow": 3
+  },
+  {
+    "companyName": "Tailscale",
+    "role": "Product Engineer",
+    "location": "Hybrid",
+    "salary": 124000,
+    "sourcePlatform": "LinkedIn",
+    "jobUrl": "https://tailscale.com/careers",
+    "applicationDateDaysAgo": 12,
+    "status": "Applied",
+    "notes": "Emphasize networking fundamentals and calm product UX.",
+    "followUpDateDaysFromNow": -1
+  },
+  {
+    "companyName": "Ramp",
+    "role": "Frontend Developer",
+    "location": "New York",
+    "salary": 132000,
+    "sourcePlatform": "Wellfound",
+    "jobUrl": "https://ramp.com/careers",
+    "applicationDateDaysAgo": 2,
+    "status": "Applied",
+    "notes": "Highlight dashboard performance work.",
+    "followUpDateDaysFromNow": null
+  },
+  {
+    "companyName": "Figma",
+    "role": "Design Systems Engineer",
+    "location": "San Francisco",
+    "salary": 142000,
+    "sourcePlatform": "Referral",
+    "jobUrl": "https://figma.com/careers",
+    "applicationDateDaysAgo": 15,
+    "status": "Wishlist",
+    "notes": "Tailor resume toward component APIs and accessibility.",
+    "followUpDateDaysFromNow": 5
+  }
+]

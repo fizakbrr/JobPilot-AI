@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireGuest } from "@/lib/jobpilot/guest";
+import { routeErrorResponse, validationErrorResponse } from "@/lib/jobpilot/route-errors";
 import {
   addActivity,
   calculateAnalytics,
@@ -22,8 +23,8 @@ export async function GET() {
     const questions = listGuestQuestions(database, guest.id);
 
     return NextResponse.json({ applications, analytics, analyses, questions });
-  } catch {
-    return NextResponse.json({ error: "Enter your name to start." }, { status: 401 });
+  } catch (error) {
+    return routeErrorResponse(error, "Could not load applications.");
   }
 }
 
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
     const guest = await requireGuest();
     const parsed = applicationSchema.safeParse(await request.json());
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid application." }, { status: 400 });
+      return validationErrorResponse(parsed.error.issues[0]?.message ?? "Invalid application.");
     }
 
     const application = await transact((database) => {
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ application }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: "Enter your name to start." }, { status: 401 });
+  } catch (error) {
+    return routeErrorResponse(error, "Could not create application.");
   }
 }

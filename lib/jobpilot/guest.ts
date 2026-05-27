@@ -5,6 +5,13 @@ import { createGuest, getGuestById, updateGuestName } from "@/lib/jobpilot/store
 
 const guestCookieName = "jobpilot_guest";
 
+export class GuestSessionRequiredError extends Error {
+  constructor() {
+    super("Guest session required");
+    this.name = "GuestSessionRequiredError";
+  }
+}
+
 export async function getCurrentGuest() {
   const cookieStore = await cookies();
   const guestId = cookieStore.get(guestCookieName)?.value;
@@ -15,7 +22,7 @@ export async function getCurrentGuest() {
 export async function requireGuest() {
   const guest = await getCurrentGuest();
   if (!guest) {
-    throw new Error("Guest session required");
+    throw new GuestSessionRequiredError();
   }
   return guest;
 }

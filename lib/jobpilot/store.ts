@@ -3,6 +3,8 @@ import "server-only";
 import { promises as fs } from "node:fs";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
+import starterApplications from "@/content/jobpilot/starter-applications.json";
+import { createAiQuotaSnapshot, getDailyAiActionLimit } from "@/lib/jobpilot/config";
 import {
   APPLICATION_STATUSES,
   type ActivityEvent,
@@ -15,6 +17,11 @@ import {
   type JobPilotDatabase,
   type ResumeAnalysis,
 } from "@/lib/jobpilot/types";
+
+type StarterApplication = Omit<Application, "id" | "guestId" | "applicationDate" | "followUpDate" | "createdAt" | "updatedAt"> & {
+  applicationDateDaysAgo: number;
+  followUpDateDaysFromNow: number | null;
+};
 
 const dataDirectory =
   process.env.JOBPILOT_DATA_DIR || (process.env.VERCEL ? path.join("/tmp", "jobpilot") : path.join(process.cwd(), "data"));
@@ -195,13 +202,7 @@ export function getAiQuota(database: JobPilotDatabase, guestId: string): AiQuota
   const date = todayKey();
   const usage = database.aiUsage.find((item) => item.guestId === guestId && item.date === date);
   const used = usage?.count ?? 0;
-  const limit = 3;
-  return {
-    limit,
-    used,
-    remaining: Math.max(0, limit - used),
-    date,
-  };
+  return createAiQuotaSnapshot(getDailyAiActionLimit(), used, date);
 }
 
 export function consumeAiQuota(database: JobPilotDatabase, guestId: string) {
@@ -232,74 +233,21 @@ function seedGuestData(database: JobPilotDatabase, guestId: string) {
     return date.toISOString().slice(0, 10);
   };
 
-  const samples: Array<Omit<Application, "id" | "guestId" | "createdAt" | "updatedAt">> = [
-    {
-      companyName: "Linear",
-      role: "Frontend Engineer",
-      location: "Remote",
-      salary: 118000,
-      sourcePlatform: "Referral",
-      jobUrl: "https://linear.app/careers",
-      applicationDate: dateDaysAgo(8),
-      status: "Technical Interview",
-      notes: "Ask about design systems and product engineering workflow.",
-      followUpDate: dateDaysFromNow(1),
-    },
-    {
-      companyName: "Vercel",
-      role: "Junior Developer Advocate",
-      location: "Remote",
-      salary: 98000,
-      sourcePlatform: "Company site",
-      jobUrl: "https://vercel.com/careers",
-      applicationDate: dateDaysAgo(4),
-      status: "Screening",
-      notes: "Prepare examples around Next.js, demos, and documentation.",
-      followUpDate: dateDaysFromNow(3),
-    },
-    {
-      companyName: "Tailscale",
-      role: "Product Engineer",
-      location: "Hybrid",
-      salary: 124000,
-      sourcePlatform: "LinkedIn",
-      jobUrl: "https://tailscale.com/careers",
-      applicationDate: dateDaysAgo(12),
-      status: "Applied",
-      notes: "Emphasize networking fundamentals and calm product UX.",
-      followUpDate: dateDaysAgo(1),
-    },
-    {
-      companyName: "Ramp",
-      role: "Frontend Developer",
-      location: "New York",
-      salary: 132000,
-      sourcePlatform: "Wellfound",
-      jobUrl: "https://ramp.com/careers",
-      applicationDate: dateDaysAgo(2),
-      status: "Applied",
-      notes: "Highlight dashboard performance work.",
-      followUpDate: null,
-    },
-    {
-      companyName: "Figma",
-      role: "Design Systems Engineer",
-      location: "San Francisco",
-      salary: 142000,
-      sourcePlatform: "Referral",
-      jobUrl: "https://figma.com/careers",
-      applicationDate: dateDaysAgo(15),
-      status: "Wishlist",
-      notes: "Tailor resume toward component APIs and accessibility.",
-      followUpDate: dateDaysFromNow(5),
-    },
-  ];
-
-  for (const sample of samples) {
+  for (const sample of starterApplications as StarterApplication[]) {
     const application: Application = {
-      ...sample,
       id: createId("app"),
       guestId,
+      companyName: sample.companyName,
+      role: sample.role,
+      location: sample.location,
+      salary: sample.salary,
+      sourcePlatform: sample.sourcePlatform,
+      jobUrl: sample.jobUrl,
+      applicationDate: dateDaysAgo(sample.applicationDateDaysAgo),
+      status: sample.status,
+      notes: sample.notes,
+      followUpDate:
+        sample.followUpDateDaysFromNow === null ? null : dateDaysFromNow(sample.followUpDateDaysFromNow),
       createdAt: timestamp,
       updatedAt: timestamp,
     };

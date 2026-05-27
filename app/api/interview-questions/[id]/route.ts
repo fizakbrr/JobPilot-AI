@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireGuest } from "@/lib/jobpilot/guest";
+import { routeErrorResponse, validationErrorResponse } from "@/lib/jobpilot/route-errors";
 import { nowIso, transact } from "@/lib/jobpilot/store";
 import { interviewPatchSchema } from "@/lib/jobpilot/validators";
 
@@ -13,7 +14,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     const { id } = await context.params;
     const parsed = interviewPatchSchema.safeParse(await request.json());
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid question update." }, { status: 400 });
+      return validationErrorResponse(parsed.error.issues[0]?.message ?? "Invalid question update.");
     }
 
     const question = await transact((database) => {
@@ -32,7 +33,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     return NextResponse.json({ question });
-  } catch {
-    return NextResponse.json({ error: "Enter your name to start." }, { status: 401 });
+  } catch (error) {
+    return routeErrorResponse(error, "Could not update question.");
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { analyzeResumeWithAI } from "@/lib/jobpilot/ai";
 import { requireGuest } from "@/lib/jobpilot/guest";
+import { routeErrorResponse, validationErrorResponse } from "@/lib/jobpilot/route-errors";
 import { addActivity, consumeAiQuota, createId, nowIso, transact } from "@/lib/jobpilot/store";
 import { resumeAnalyzeSchema } from "@/lib/jobpilot/validators";
 
@@ -9,7 +10,7 @@ export async function POST(request: Request) {
     const guest = await requireGuest();
     const parsed = resumeAnalyzeSchema.safeParse(await request.json());
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid resume request." }, { status: 400 });
+      return validationErrorResponse(parsed.error.issues[0]?.message ?? "Invalid resume request.");
     }
 
     const quotaCheck = await transact((database) => consumeAiQuota(database, guest.id));
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ analysis, quota: quotaCheck.quota });
-  } catch {
-    return NextResponse.json({ error: "Enter your name to start." }, { status: 401 });
+  } catch (error) {
+    return routeErrorResponse(error, "Could not analyze resume.");
   }
 }
