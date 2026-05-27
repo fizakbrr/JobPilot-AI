@@ -4,12 +4,13 @@
 
 node_modules/
 data/
+.agents/
+.stitch/
 .next/
 .vercel/
 .playwright-cli/
 output/
 tsconfig.tsbuildinfo
-.stitch/*-response.json
 
 .DS_Store
 Thumbs.db
