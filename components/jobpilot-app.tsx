@@ -407,9 +407,9 @@ export function JobPilotApp() {
   const nav = <Navigation view={view} setView={setView} onNavigate={() => setMobileNavOpen(false)} onAdd={openAdd} quota={quota} />;
 
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden bg-[#0F1C15] text-[#17201B]">
+    <div className="relative min-h-dvh overflow-hidden bg-[#0F1C15] text-[#17201B]">
       <Dialog open={!guest}>
-        <DialogContent className="overflow-hidden rounded-2xl border-[#DDE6D7] bg-[#F8FAF3] shadow-[0_32px_80px_-38px_rgba(7,24,14,0.75)] sm:max-w-[440px]">
+        <DialogContent className="overflow-hidden rounded-2xl border-[#DDE6D7] bg-[#F8FAF3] shadow-[0_32px_80px_-38px_rgba(7,24,14,0.75)] sm:max-w-110">
           <div className="absolute inset-x-0 top-0 h-1 bg-[#1B7A4E]" />
           <DialogHeader>
             <div className="mb-4 flex h-12 w-40 items-center">
@@ -444,7 +444,7 @@ export function JobPilotApp() {
         </DialogContent>
       </Dialog>
 
-      <div className="relative grid min-h-[100dvh] grid-cols-1 lg:grid-cols-[284px_1fr]">
+      <div className="relative grid min-h-dvh grid-cols-1 lg:grid-cols-[284px_1fr]">
         <aside className="hidden border-r border-white/10 bg-[#102018]/95 text-[#F7FAF1] shadow-[22px_0_70px_-48px_rgba(0,0,0,0.9)] lg:block">
           {nav}
         </aside>
@@ -458,7 +458,7 @@ export function JobPilotApp() {
             setMobileNavOpen={setMobileNavOpen}
           />
           {mobileNavOpen ? <div className="border-b border-[#DDE6D7] bg-[#102018] text-[#F7FAF1] lg:hidden">{nav}</div> : null}
-          <div className="mx-auto max-w-[1500px] px-4 py-5 md:px-7 md:py-7">
+          <div className="mx-auto max-w-375 px-4 py-5 md:px-7 md:py-7">
             {view === "dashboard" ? (
               <DashboardView
                 data={data}
@@ -526,7 +526,7 @@ export function JobPilotApp() {
 
 function LoadingShell() {
   return (
-    <div className="grid min-h-[100dvh] grid-cols-1 bg-[#EEF3EA] lg:grid-cols-[284px_1fr]">
+    <div className="grid min-h-dvh grid-cols-1 bg-[#EEF3EA] lg:grid-cols-[284px_1fr]">
       <div className="hidden border-r border-white/10 bg-[#102018] p-5 lg:block">
         <Skeleton className="h-14 w-full rounded-2xl bg-white/12" />
         <div className="mt-6 space-y-2">
@@ -542,7 +542,7 @@ function LoadingShell() {
             <Skeleton key={index} className="h-28 rounded-2xl" />
           ))}
         </div>
-        <Skeleton className="mt-4 h-[420px] rounded-3xl" />
+        <Skeleton className="mt-4 h-105 rounded-3xl" />
       </div>
     </div>
   );
@@ -570,7 +570,7 @@ function Navigation({
   ] as const;
 
   return (
-    <div className="flex h-full min-h-[100dvh] flex-col">
+    <div className="flex h-full min-h-dvh flex-col">
       <div className="relative overflow-hidden border-b border-white/10 p-5">
         <div className="relative w-full pr-3">
           <Image src="/brand/logo-complete.svg" alt="JobPilot AI" width={214} height={69} className="h-auto w-full brightness-0 invert" priority />
@@ -607,13 +607,13 @@ function Navigation({
               onNavigate();
             }}
           >
-            <Icon className="size-[18px]" />
+            <Icon className="size-4.5" />
             {label}
           </Button>
         ))}
       </div>
       <div className="border-t border-white/10 p-4">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur">
+        <div className="rounded-2xl border border-white/10 bg-white/6 p-4 backdrop-blur">
           <p className="font-mono text-[11px] font-semibold uppercase text-[#EAF4EC]">Guest mode</p>
           <p className="mt-1 text-[13px] leading-5 text-[#91A99A]">No login. Three AI actions reset daily.</p>
           <Progress value={(quota.remaining / quota.limit) * 100} className="mt-4 h-1.5 bg-white/10 [&_[data-slot=progress-indicator]]:bg-[#DDE85F]" />
@@ -640,7 +640,7 @@ function TopBar({
 }) {
   return (
     <header className="sticky top-0 z-40 border-b border-[#DDE6D7] bg-[#EEF3EA]/88 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-[1500px] items-center gap-4 px-4 md:px-7">
+      <div className="mx-auto flex h-16 max-w-375 items-center gap-4 px-4 md:px-7">
         <Button variant="ghost" size="icon" className="size-10 rounded-xl lg:hidden" onClick={() => setMobileNavOpen(!mobileNavOpen)}>
           <Menu className="size-5" />
         </Button>
@@ -705,7 +705,7 @@ function DashboardView({
 
   return (
     <div className="grid min-w-0 gap-5">
-      <section className="relative overflow-hidden rounded-[32px] bg-[#12221A] p-5 text-[#F7FAF1] shadow-[0_28px_80px_-54px_rgba(7,24,14,0.9)] md:p-7">
+      <section className="relative overflow-hidden rounded-4xl bg-[#12221A] p-5 text-[#F7FAF1] shadow-[0_28px_80px_-54px_rgba(7,24,14,0.9)] md:p-7">
         <Image
           src="/brand/logo-mark.svg"
           alt=""
@@ -744,7 +744,7 @@ function DashboardView({
               <div
                 key={label}
                 className={cn(
-                  "rounded-3xl border border-white/10 bg-white/[0.075] p-4 backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]",
+                  "rounded-3xl border border-white/10 bg-white/7.5 p-4 backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]",
                   index === 1 && "bg-[#DDE85F] text-[#17201B]",
                 )}
               >
@@ -965,7 +965,7 @@ function ApplicationsView({
         </div>
       </section>
 
-      <ScrollArea className="h-[calc(100dvh-244px)] min-h-[560px] w-full max-w-full overflow-hidden rounded-[28px] border border-[#D8E3D4] bg-[#E7EEE3] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
+      <ScrollArea className="h-[calc(100dvh-244px)] min-h-140 w-full max-w-full overflow-hidden rounded-[28px] border border-[#D8E3D4] bg-[#E7EEE3] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
         <div className="flex h-full min-w-max items-start gap-4 pb-4 pr-4">
           {APPLICATION_STATUSES.map((status) => {
             const laneItems = applications.filter((application) => application.status === status);
@@ -973,7 +973,7 @@ function ApplicationsView({
               <div
                 key={status}
                 className={cn(
-                  "flex h-full w-[324px] shrink-0 flex-col overflow-hidden rounded-[24px] border bg-[#F9FBF4] shadow-[0_18px_44px_-36px_rgba(15,28,21,0.65)]",
+                  "flex h-full w-81 shrink-0 flex-col overflow-hidden rounded-3xl border bg-[#F9FBF4] shadow-[0_18px_44px_-36px_rgba(15,28,21,0.65)]",
                   statusMeta[status].border,
                 )}
               >
@@ -1281,7 +1281,7 @@ function ResumeView({
               Paste the job description and resume text. JobPilot turns the gap into specific keywords, bullet rewrites, and a score you can act on.
             </p>
           </div>
-          <div className="rounded-[24px] border border-white/12 bg-white/8 p-3 backdrop-blur">
+          <div className="rounded-3xl border border-white/12 bg-white/8 p-3 backdrop-blur">
             <p className="mb-2 font-mono text-[11px] uppercase text-[#BFD1C4]">Target application</p>
             <Select value={selectedApplicationId} onValueChange={setSelectedApplicationId}>
               <SelectTrigger className="h-12 rounded-2xl border-white/12 bg-[#F7FAF1] text-[13px] text-[#17201B]">
@@ -1362,9 +1362,9 @@ function ResumeView({
 function AnalysisSkeleton() {
   return (
     <div className="grid gap-4">
-      <Skeleton className="h-24 w-full rounded-[24px]" />
-      <Skeleton className="h-28 w-full rounded-[24px]" />
-      <Skeleton className="h-36 w-full rounded-[24px]" />
+      <Skeleton className="h-24 w-full rounded-3xl" />
+      <Skeleton className="h-28 w-full rounded-3xl" />
+      <Skeleton className="h-36 w-full rounded-3xl" />
     </div>
   );
 }
@@ -1374,7 +1374,7 @@ function AnalysisPanel({ analysis }: { analysis: ResumeAnalysis }) {
     <div className="grid gap-5">
       <div className="relative overflow-hidden rounded-[26px] bg-[#17201B] p-5 text-[#F7FAF1]">
         <div className="relative flex items-center gap-5">
-          <div className="grid size-20 place-items-center rounded-[24px] border border-[#DDE85F]/35 bg-[#DDE85F] shadow-[0_18px_42px_-28px_rgba(221,232,95,0.9)]">
+          <div className="grid size-20 place-items-center rounded-3xl border border-[#DDE85F]/35 bg-[#DDE85F] shadow-[0_18px_42px_-28px_rgba(221,232,95,0.9)]">
             <span className="font-mono text-[28px] font-semibold text-[#17201B]">{analysis.score}</span>
           </div>
           <div>
@@ -1477,7 +1477,7 @@ function InterviewView({
               Generate role-specific prompts, check off rehearsed answers, and keep your rough talking points beside every question.
             </p>
           </div>
-          <div className="rounded-[24px] border border-[#D8E3D4] bg-white/72 p-3 shadow-[0_18px_40px_-34px_rgba(15,28,21,0.68)]">
+          <div className="rounded-3xl border border-[#D8E3D4] bg-white/72 p-3 shadow-[0_18px_40px_-34px_rgba(15,28,21,0.68)]">
             <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
               <Select value={selectedApplicationId} onValueChange={setSelectedApplicationId}>
                 <SelectTrigger className="h-11 rounded-2xl border-[#D8E3D4] bg-white text-[13px]">
@@ -1638,7 +1638,7 @@ function SectionHeader({
       className={cn(
         "flex h-12 items-center justify-between border-b px-4",
         tone === "light" && "border-[#D8E3D4] bg-white/58",
-        tone === "dark" && "border-white/10 bg-white/[0.04]",
+        tone === "dark" && "border-white/10 bg-white/4",
       )}
     >
       <div className="flex items-center gap-2">

@@ -16,8 +16,12 @@ import {
   type ResumeAnalysis,
 } from "@/lib/types";
 
-const dataDirectory = path.join(process.cwd(), "data");
+const dataDirectory = process.env.JOBPILOT_DATA_DIR || (process.env.VERCEL ? path.join("/tmp", "jobpilot") : path.join(process.cwd(), "data"));
 const databasePath = path.join(dataDirectory, "jobpilot.json");
+const redisRestUrl = process.env.UPSTASH_REDIS_REST_URL?.replace(/\/+$/, "");
+const redisRestToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+const redisDatabaseKey = process.env.JOBPILOT_STORAGE_KEY || "jobpilot:database";
+const redisLockKey = `${redisDatabaseKey}:lock`;
 
 const emptyDatabase: JobPilotDatabase = {
   guests: [],
@@ -28,31 +32,134 @@ const emptyDatabase: JobPilotDatabase = {
   aiUsage: [],
 };
 
+type RedisResponse<T> = {
+  result?: T;
+  error?: string;
+};
+
+function cloneEmptyDatabase(): JobPilotDatabase {
+  return JSON.parse(JSON.stringify(emptyDatabase)) as JobPilotDatabase;
+}
+
+function normalizeDatabase(input: unknown): JobPilotDatabase {
+  if (!input || typeof input !== "object") return cloneEmptyDatabase();
+  return { ...cloneEmptyDatabase(), ...(input as Partial<JobPilotDatabase>) };
+}
+
+function isRedisStorageConfigured() {
+  return Boolean(redisRestUrl && redisRestToken);
+}
+
+async function redisCommand<T>(command: unknown[]): Promise<T> {
+  if (!redisRestUrl || !redisRestToken) {
+    throw new Error("Upstash Redis storage is not configured.");
+  }
+
+  const response = await fetch(redisRestUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${redisRestToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(command),
+    cache: "no-store",
+  });
+  const payload = (await response.json()) as RedisResponse<T>;
+
+  if (!response.ok || payload.error) {
+    throw new Error(payload.error ?? `Redis command failed with status ${response.status}.`);
+  }
+
+  return payload.result as T;
+}
+
+async function readRedisDatabase() {
+  const raw = await redisCommand<string | null>(["GET", redisDatabaseKey]);
+  if (!raw) {
+    const database = cloneEmptyDatabase();
+    await writeRedisDatabase(database);
+    return database;
+  }
+
+  return normalizeDatabase(JSON.parse(raw));
+}
+
+async function writeRedisDatabase(database: JobPilotDatabase) {
+  await redisCommand<string>(["SET", redisDatabaseKey, JSON.stringify(normalizeDatabase(database))]);
+}
+
+async function acquireRedisLock() {
+  const token = createId("lock");
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const result = await redisCommand<string | null>(["SET", redisLockKey, token, "NX", "PX", 5000]);
+    if (result === "OK") return token;
+    await new Promise((resolve) => setTimeout(resolve, 25 + attempt * 25));
+  }
+
+  throw new Error("JobPilot storage is busy. Please try again.");
+}
+
+async function releaseRedisLock(token: string) {
+  try {
+    await redisCommand<number>([
+      "EVAL",
+      "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+      1,
+      redisLockKey,
+      token,
+    ]);
+  } catch {
+    // The lock has a short TTL, so a failed release will self-heal.
+  }
+}
+
 async function ensureDatabase() {
   await fs.mkdir(dataDirectory, { recursive: true });
 
   try {
     await fs.access(databasePath);
   } catch {
-    await fs.writeFile(databasePath, JSON.stringify(emptyDatabase, null, 2), "utf8");
+    await fs.writeFile(databasePath, JSON.stringify(cloneEmptyDatabase(), null, 2), "utf8");
   }
 }
 
-export async function readDatabase(): Promise<JobPilotDatabase> {
+async function readFileDatabase(): Promise<JobPilotDatabase> {
   await ensureDatabase();
   const raw = await fs.readFile(databasePath, "utf8");
-  return { ...emptyDatabase, ...JSON.parse(raw) };
+  return normalizeDatabase(JSON.parse(raw));
+}
+
+async function writeFileDatabase(database: JobPilotDatabase) {
+  await ensureDatabase();
+  await fs.writeFile(databasePath, JSON.stringify(normalizeDatabase(database), null, 2), "utf8");
+}
+
+export async function readDatabase(): Promise<JobPilotDatabase> {
+  if (isRedisStorageConfigured()) return readRedisDatabase();
+  return readFileDatabase();
 }
 
 export async function writeDatabase(database: JobPilotDatabase) {
-  await ensureDatabase();
-  await fs.writeFile(databasePath, JSON.stringify(database, null, 2), "utf8");
+  if (isRedisStorageConfigured()) return writeRedisDatabase(database);
+  await writeFileDatabase(database);
 }
 
 export async function transact<T>(callback: (database: JobPilotDatabase) => T | Promise<T>) {
-  const database = await readDatabase();
+  if (isRedisStorageConfigured()) {
+    const lockToken = await acquireRedisLock();
+    try {
+      const database = await readRedisDatabase();
+      const result = await callback(database);
+      await writeRedisDatabase(database);
+      return result;
+    } finally {
+      await releaseRedisLock(lockToken);
+    }
+  }
+
+  const database = await readFileDatabase();
   const result = await callback(database);
-  await writeDatabase(database);
+  await writeFileDatabase(database);
   return result;
 }
 

@@ -17,7 +17,7 @@ export async function POST(request: Request) {
         (item) => item.id === parsed.data.applicationId && item.guestId === guest.id,
       );
       if (!application) return { allowed: false as const, missingApplication: true as const, quota: getAiQuota(database, guest.id) };
-      return consumeAiQuota(database, guest.id);
+      return { ...consumeAiQuota(database, guest.id), application };
     });
 
     if ("missingApplication" in quotaCheck) {
@@ -31,14 +31,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await transact(async (database) => {
+    const generated = await generateInterviewQuestionsWithAI(quotaCheck.application);
+    const records = toInterviewRecords(guest.id, quotaCheck.application.id, generated);
+
+    const result = await transact((database) => {
       const application = database.applications.find(
         (item) => item.id === parsed.data.applicationId && item.guestId === guest.id,
       );
       if (!application) return null;
 
-      const generated = await generateInterviewQuestionsWithAI(application);
-      const records = toInterviewRecords(guest.id, application.id, generated);
       database.interviewQuestions = [
         ...records,
         ...database.interviewQuestions.filter(
