@@ -1,7 +1,7 @@
 # JobPilot AI Product Requirements Document
 
 **Version:** 1.0  
-**Author:** Hafiz Akbar Mayhendrison  
+**Author:** Product Owner  
 **Project Type:** Portfolio / SaaS-style Product  
 **Status:** MVP Planning  
 **Last Updated:** May 21, 2026
