@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  ArrowRight,
   ArrowUpRight,
   BarChart3,
   Bell,
@@ -11,6 +12,7 @@ import {
   BriefcaseBusiness,
   CheckCircle2,
   ClipboardList,
+  Compass,
   FileText,
   HelpCircle,
   LayoutDashboard,
@@ -21,6 +23,7 @@ import {
   Search,
   Send,
   Settings,
+  ShieldCheck,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -247,6 +250,7 @@ async function readJson<T>(response: Response): Promise<T> {
 }
 
 export function JobPilotApp() {
+  const [showWorkspace, setShowWorkspace] = useState(false);
   const [view, setView] = useState<View>("dashboard");
   const [guest, setGuest] = useState<Guest | null>(null);
   const [quota, setQuota] = useState<AiQuota>(() => createAiQuotaSnapshot(DEFAULT_DAILY_AI_ACTION_LIMIT));
@@ -514,8 +518,6 @@ export function JobPilotApp() {
     }
   }
 
-  if (loading) return <LoadingShell />;
-
   const openAdd = () => {
     setView("applications");
     setAddSheetOpen(true);
@@ -523,6 +525,12 @@ export function JobPilotApp() {
   };
 
   const nav = <Navigation view={view} setView={setView} onNavigate={() => setMobileNavOpen(false)} onAdd={openAdd} quota={normalizedQuota} />;
+
+  if (!showWorkspace) {
+    return <LandingPage onStart={() => setShowWorkspace(true)} />;
+  }
+
+  if (loading) return <LoadingShell />;
 
   return (
     <div className="relative min-h-dvh overflow-hidden bg-[#0F1C15] text-[#17201B]">
@@ -645,6 +653,186 @@ export function JobPilotApp() {
           </div>
         </main>
       </div>
+    </div>
+  );
+}
+
+const landingMetrics = [
+  ["One name", "No account gate"],
+  ["Daily cap", "Configured AI use"],
+  ["Local data", "JSON workspace"],
+] as const;
+
+const landingFlow = [
+  {
+    title: "Capture the lead",
+    description: "Company, role, salary, source, and follow-up date live in one quiet record.",
+    icon: BriefcaseBusiness,
+  },
+  {
+    title: "Read the route",
+    description: "A board view keeps every stage visible without turning tracking into busywork.",
+    icon: Compass,
+  },
+  {
+    title: "Spend AI carefully",
+    description: "Resume checks and interview prompts stay capped so the public demo remains usable.",
+    icon: ShieldCheck,
+  },
+] as const;
+
+function LandingPage({ onStart }: { onStart: () => void }) {
+  const scrollToFlow = () => document.getElementById("landing-flow")?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  return (
+    <div className="min-h-dvh bg-[#EEF3EA] text-[#17201B]">
+      <section className="relative min-h-[84dvh] overflow-hidden bg-[#0F1C15] text-[#F7FAF1]">
+        <Image
+          src="/landing/jobpilot-command-desk.png"
+          alt="Career planning desk with laptop and application cards"
+          fill
+          className="object-cover object-center"
+          sizes="100vw"
+          priority
+        />
+        <div className="absolute inset-0 bg-[#07180E]/64" />
+        <div className="relative mx-auto flex min-h-[84dvh] max-w-375 flex-col px-4 pb-10 pt-5 md:px-7">
+          <div className="landing-reveal flex items-center justify-between gap-4">
+            <div className="flex h-12 w-44 items-center md:w-56">
+              <Image src="/brand/logo-complete.svg" alt={APP_CONFIG.name} width={214} height={69} className="h-auto w-full brightness-0 invert" priority />
+            </div>
+            <Button
+              onClick={onStart}
+              className="group h-11 rounded-full bg-[#DDE85F] pl-5 pr-1.5 font-mono text-[12px] text-[#17201B] shadow-[0_18px_42px_-30px_rgba(10,20,14,0.95)] transition-[background-color,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-[#E9F277] active:scale-[0.96]"
+            >
+              Open workspace
+              <span className="grid size-8 place-items-center rounded-full bg-[#17201B] text-[#F7FAF1] transition-[transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
+                <ArrowRight className="size-3.5" strokeWidth={1.5} />
+              </span>
+            </Button>
+          </div>
+
+          <div className="grid flex-1 content-end pb-6 pt-16 md:pb-12">
+            <div className="landing-reveal max-w-3xl" style={{ animationDelay: "120ms" }}>
+              <div className="mb-6 w-fit rounded-full border border-white/16 bg-[#0F1C15]/72 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-[#DDE85F]">
+                Name-only career workspace
+              </div>
+              <h1 className="max-w-3xl text-[56px] font-semibold leading-[0.9] tracking-[-0.07em] text-balance md:text-[92px]">
+                JobPilot AI
+              </h1>
+              <p className="mt-6 max-w-2xl text-[16px] leading-7 text-[#D7E4DA] md:text-[18px]">
+                A public demo for tracking applications, tightening resumes, planning follow-ups, and practicing interviews without account friction.
+              </p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Button
+                  onClick={onStart}
+                  className="group h-13 rounded-full bg-[#F7FAF1] pl-6 pr-1.5 font-mono text-[12px] text-[#17201B] shadow-[0_22px_52px_-36px_rgba(0,0,0,0.95)] transition-[background-color,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-white active:scale-[0.96]"
+                >
+                  Start with your name
+                  <span className="grid size-9 place-items-center rounded-full bg-[#DDE85F] transition-[transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-1 group-hover:-translate-y-0.5">
+                    <ArrowRight className="size-4" strokeWidth={1.5} />
+                  </span>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={scrollToFlow}
+                  className="h-13 rounded-full border-white/16 bg-[#0F1C15]/56 px-6 font-mono text-[12px] text-[#F7FAF1] transition-[background-color,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-[#17201B]/72 hover:text-[#F7FAF1] active:scale-[0.96]"
+                >
+                  See how it works
+                </Button>
+              </div>
+            </div>
+
+            <div className="landing-reveal mt-12 hidden max-w-3xl gap-2 sm:grid sm:grid-cols-3" style={{ animationDelay: "260ms" }}>
+              {landingMetrics.map(([value, label]) => (
+                <div key={value} className="rounded-[22px] border border-white/12 bg-[#0F1C15]/68 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                  <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[#91A99A]">{label}</p>
+                  <p className="mt-3 text-[20px] font-semibold tracking-[-0.04em] text-[#F7FAF1]">{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="landing-flow" className="px-4 py-24 md:px-7 md:py-28">
+        <div className="mx-auto grid max-w-375 gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+          <div className="landing-reveal lg:sticky lg:top-8">
+            <div className="mb-5 w-fit rounded-full border border-[#C9D8C5] bg-[#F9FBF4] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-[#53675A]">
+              Built for the messy middle
+            </div>
+            <h2 className="max-w-xl text-[38px] font-semibold leading-[0.98] tracking-[-0.06em] text-balance md:text-[58px]">
+              A landing page first, then the cockpit.
+            </h2>
+            <p className="mt-5 max-w-lg text-[15px] leading-7 text-[#53675A]">
+              Visitors get the product promise before they enter the tracker. The dashboard stays one click away, and the name prompt only appears when they choose to start.
+            </p>
+          </div>
+
+          <div className="grid gap-4">
+            {landingFlow.map(({ title, description, icon: Icon }, index) => (
+              <div
+                key={title}
+                className="landing-reveal rounded-[30px] border border-[#D8E3D4] bg-[#F9FBF4] p-2 shadow-[0_24px_60px_-52px_rgba(15,28,21,0.7)]"
+                style={{ animationDelay: `${180 + index * 100}ms` }}
+              >
+                <div className="grid gap-5 rounded-[24px] bg-white/76 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] md:grid-cols-[auto_1fr_auto] md:items-center">
+                  <div className="grid size-12 place-items-center rounded-2xl bg-[#17201B] text-[#F7FAF1]">
+                    <Icon className="size-5" strokeWidth={1.4} />
+                  </div>
+                  <div>
+                    <p className="text-[20px] font-semibold tracking-[-0.04em] text-[#17201B]">{title}</p>
+                    <p className="mt-2 max-w-2xl text-[14px] leading-6 text-[#53675A]">{description}</p>
+                  </div>
+                  <div className="hidden items-center gap-2 md:flex">
+                    <span className="landing-drift size-2.5 rounded-full bg-[#DDE85F]" style={{ animationDelay: `${index * 160}ms` }} />
+                    <span className="h-px w-14 bg-[#C9D8C5]" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="px-4 pb-24 md:px-7 md:pb-28">
+        <div className="mx-auto max-w-375 overflow-hidden rounded-[34px] border border-[#17201B] bg-[#17201B] p-3 text-[#F7FAF1] shadow-[0_30px_82px_-62px_rgba(15,28,21,0.88)]">
+          <div className="grid gap-8 rounded-[28px] bg-[#102018] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] lg:grid-cols-[1fr_0.85fr] lg:items-center lg:p-7">
+            <div>
+              <div className="mb-5 flex h-10 w-32 items-center">
+                <Image src="/brand/logo-complete.svg" alt={APP_CONFIG.name} width={154} height={50} className="h-auto w-full brightness-0 invert" />
+              </div>
+              <h2 className="max-w-2xl text-[34px] font-semibold leading-[1] tracking-[-0.06em] text-balance md:text-[52px]">
+                Start clean. Keep the job hunt readable.
+              </h2>
+              <p className="mt-4 max-w-xl text-[14px] leading-7 text-[#BFD1C4]">
+                The first screen sets context. The workspace handles the details: board stages, resume diagnostics, interview notes, and a daily AI limit.
+              </p>
+            </div>
+
+            <div className="grid gap-3">
+              {["Application board", "Resume PDF import", "Interview prep notes"].map((item, index) => (
+                <div key={item} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/6 p-3">
+                  <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#DDE85F] text-[#17201B]">
+                    <CheckCircle2 className="size-4" strokeWidth={1.5} />
+                  </div>
+                  <p className="text-[14px] font-medium text-[#F7FAF1]">{item}</p>
+                  <span className="ml-auto font-mono text-[11px] text-[#91A99A]">0{index + 1}</span>
+                </div>
+              ))}
+              <Button
+                onClick={onStart}
+                className="group mt-2 h-13 rounded-full bg-[#DDE85F] pl-6 pr-1.5 font-mono text-[12px] text-[#17201B] transition-[background-color,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-[#E9F277] active:scale-[0.96]"
+              >
+                Enter JobPilot
+                <span className="grid size-9 place-items-center rounded-full bg-[#17201B] text-[#F7FAF1] transition-[transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-1 group-hover:-translate-y-0.5">
+                  <ArrowRight className="size-4" strokeWidth={1.5} />
+                </span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
