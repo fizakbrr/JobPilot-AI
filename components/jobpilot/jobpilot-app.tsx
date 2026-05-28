@@ -48,16 +48,17 @@ import {
 } from "@/lib/jobpilot/types";
 import { applicationSchema } from "@/lib/jobpilot/validators";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -166,19 +167,6 @@ function formatCurrency(value: number | null) {
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(value);
-}
-
-function followUpState(application: Application) {
-  if (!application.followUpDate) return "none";
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const followUp = new Date(application.followUpDate);
-  const soon = new Date(today);
-  soon.setDate(today.getDate() + 3);
-
-  if (followUp < today) return "overdue";
-  if (followUp <= soon) return "upcoming";
-  return "scheduled";
 }
 
 function sanitizeSalary(value: string) {
@@ -518,6 +506,43 @@ export function JobPilotApp() {
     }
   }
 
+  async function clearAllData() {
+    setBusyAction("clear-data");
+    try {
+      await readJson<{ ok: boolean }>(await fetch("/api/local-data", { method: "DELETE" }));
+      setGuest(null);
+      setName("");
+      setQuota(createAiQuotaSnapshot(DEFAULT_DAILY_AI_ACTION_LIMIT));
+      setData({
+        applications: [],
+        analytics: emptyAnalytics,
+        analyses: [],
+        questions: [],
+      });
+      setSelectedApplicationId("");
+      setActiveAnalysis(null);
+      setResumeText("");
+      setJobDescription("");
+      setResumeFileName("");
+      setResumeFileError(null);
+      setResumeError(null);
+      setApplicationForm(initialApplicationForm);
+      setApplicationFormErrors({});
+      setApplicationFormError(null);
+      setStatusFilter("All");
+      setSourceFilter("All");
+      setSearch("");
+      setAddSheetOpen(false);
+      setMobileNavOpen(false);
+      setShowWorkspace(false);
+      toast.success("Local data cleared.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not clear local data.");
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   const openAdd = () => {
     setView("applications");
     setAddSheetOpen(true);
@@ -648,7 +673,15 @@ export function JobPilotApp() {
               />
             ) : null}
             {view === "settings" ? (
-              <SettingsView guest={guest} quota={normalizedQuota} name={name} setName={setName} saveName={saveName} />
+              <SettingsView
+                guest={guest}
+                quota={normalizedQuota}
+                name={name}
+                setName={setName}
+                saveName={saveName}
+                clearAllData={clearAllData}
+                clearingData={busyAction === "clear-data"}
+              />
             ) : null}
           </div>
         </main>
@@ -656,12 +689,6 @@ export function JobPilotApp() {
     </div>
   );
 }
-
-const landingMetrics = [
-  ["One name", "No account gate"],
-  ["Daily cap", "Configured AI use"],
-  ["Local data", "JSON workspace"],
-] as const;
 
 const landingFlow = [
   {
@@ -714,9 +741,6 @@ function LandingPage({ onStart }: { onStart: () => void }) {
 
           <div className="grid flex-1 content-end pb-6 pt-16 md:pb-12">
             <div className="landing-reveal max-w-3xl" style={{ animationDelay: "120ms" }}>
-              <div className="mb-6 w-fit rounded-full border border-white/16 bg-[#0F1C15]/72 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-[#DDE85F]">
-                Name-only career workspace
-              </div>
               <h1 className="max-w-3xl text-[56px] font-semibold leading-[0.9] tracking-[-0.07em] text-balance md:text-[92px]">
                 JobPilot AI
               </h1>
@@ -742,15 +766,6 @@ function LandingPage({ onStart }: { onStart: () => void }) {
                 </Button>
               </div>
             </div>
-
-            <div className="landing-reveal mt-12 hidden max-w-3xl gap-2 sm:grid sm:grid-cols-3" style={{ animationDelay: "260ms" }}>
-              {landingMetrics.map(([value, label]) => (
-                <div key={value} className="rounded-[22px] border border-white/12 bg-[#0F1C15]/68 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-                  <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[#91A99A]">{label}</p>
-                  <p className="mt-3 text-[20px] font-semibold tracking-[-0.04em] text-[#F7FAF1]">{value}</p>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </section>
@@ -758,9 +773,7 @@ function LandingPage({ onStart }: { onStart: () => void }) {
       <section id="landing-flow" className="px-4 py-24 md:px-7 md:py-28">
         <div className="mx-auto grid max-w-375 gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
           <div className="landing-reveal lg:sticky lg:top-8">
-            <div className="mb-5 w-fit rounded-full border border-[#C9D8C5] bg-[#F9FBF4] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-[#53675A]">
-              Built for the messy middle
-            </div>
+            <p className="mb-5 font-mono text-[10px] uppercase tracking-[0.2em] text-[#53675A]">Built for the messy middle</p>
             <h2 className="max-w-xl text-[38px] font-semibold leading-[0.98] tracking-[-0.06em] text-balance md:text-[58px]">
               A landing page first, then the cockpit.
             </h2>
@@ -784,10 +797,7 @@ function LandingPage({ onStart }: { onStart: () => void }) {
                     <p className="text-[20px] font-semibold tracking-[-0.04em] text-[#17201B]">{title}</p>
                     <p className="mt-2 max-w-2xl text-[14px] leading-6 text-[#53675A]">{description}</p>
                   </div>
-                  <div className="hidden items-center gap-2 md:flex">
-                    <span className="landing-drift size-2.5 rounded-full bg-[#DDE85F]" style={{ animationDelay: `${index * 160}ms` }} />
-                    <span className="h-px w-14 bg-[#C9D8C5]" />
-                  </div>
+                  <span className="hidden h-px w-14 bg-[#C9D8C5] md:block" />
                 </div>
               </div>
             ))}
@@ -888,14 +898,8 @@ function Navigation({
         <div className="relative w-full pr-3">
           <Image src="/brand/logo-complete.svg" alt={APP_CONFIG.name} width={214} height={69} className="h-auto w-full brightness-0 invert" priority />
         </div>
-        <div className="relative mt-4 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[13px] font-semibold tracking-[-0.01em] text-[#EAF4EC]">{APP_CONFIG.workspaceSubtitle}</p>
-            <p className="font-mono text-[11px] text-[#91A99A]">open-demo / live pipeline</p>
-          </div>
-          <span className="rounded-full border border-[#D26F48]/35 bg-[#D26F48]/10 px-2 py-1 font-mono text-[10px] text-[#FFD8C7]">
-            ACTIVE
-          </span>
+        <div className="relative mt-4">
+          <p className="text-[13px] font-semibold tracking-[-0.01em] text-[#EAF4EC]">{APP_CONFIG.workspaceSubtitle}</p>
         </div>
         <Button
           onClick={onAdd}
@@ -974,9 +978,9 @@ function TopBar({
           <p className="truncate text-[14px] font-medium">Good to see you{guest ? `, ${guest.name}` : ""}</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <Badge variant="outline" className="h-9 rounded-xl border-[#D5E5C2] bg-[#F8FFE3] px-3 font-mono text-[11px] text-[#39521F]">
-            {quota.remaining}/{quota.limit} AI Quota
-          </Badge>
+          <p className="hidden font-mono text-[11px] text-[#53675A] tabular-nums md:block">
+            AI quota {quota.remaining}/{quota.limit}
+          </p>
           <Button variant="ghost" size="icon" className="hidden size-10 rounded-xl text-[#53675A] hover:bg-white/70 md:inline-flex">
             <Bell className="size-4" />
           </Button>
@@ -1078,7 +1082,7 @@ function DashboardView({
       <div className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
         <div className="grid gap-4">
           <section className="overflow-hidden rounded-[28px] border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-48px_rgba(15,28,21,0.7)]">
-            <SectionHeader title="Route pressure" action="status distribution" />
+            <SectionHeader title="Route pressure" />
             <div className="p-5 pt-8">
               <div className="flex h-44 items-end gap-2">
                 {APPLICATION_STATUSES.map((status) => {
@@ -1103,7 +1107,7 @@ function DashboardView({
           </section>
 
           <section className="overflow-hidden rounded-[28px] border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-48px_rgba(15,28,21,0.7)]">
-            <SectionHeader title="Recent movement" action="latest four" />
+            <SectionHeader title="Recent movement" />
             <div className="divide-y divide-[#DDE6D7]">
               {data.applications.slice(0, 4).map((application) => (
                 <Button
@@ -1123,9 +1127,7 @@ function DashboardView({
                       </p>
                       <span className="font-mono text-[11px] text-[#53675A]">{application.applicationDate}</span>
                     </div>
-                    <p className="mt-1 text-[13px] text-[#53675A]">
-                      Moved to <span className="rounded-lg bg-[#E6EFD9] px-1.5 py-0.5 font-mono text-[#17201B]">{application.status}</span>
-                    </p>
+                    <p className="mt-1 text-[13px] text-[#53675A]">Moved to {application.status}</p>
                   </div>
                   <ArrowUpRight className="size-4 shrink-0 text-[#91A99A] opacity-0 transition-opacity group-hover:opacity-100" />
                 </Button>
@@ -1157,7 +1159,7 @@ function DashboardView({
           </section>
 
           <section className="overflow-hidden rounded-[28px] border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-48px_rgba(15,28,21,0.7)]">
-            <SectionHeader title={nextFollowUp ? "Next move" : "Action items"} action={nextFollowUp?.followUpDate ?? "quiet"} />
+            <SectionHeader title={nextFollowUp ? "Next move" : "Action items"} />
             <div className="grid gap-2 p-3">
               {upcomingFollowUps.length ? (
                 upcomingFollowUps.map((application) => (
@@ -1170,7 +1172,10 @@ function DashboardView({
                       setView("applications");
                     }}
                   >
-                    <FollowUpBadge application={application} />
+                    <div className="grid min-w-20 border-r border-[#D8E3D4] pr-3">
+                      <span className="font-mono text-[10px] uppercase text-[#91A99A]">Follow-up</span>
+                      <span className="mt-1 font-mono text-[11px] text-[#17201B]">{application.followUpDate}</span>
+                    </div>
                     <div className="min-w-0">
                       <p className="truncate text-[13px] font-semibold">{application.companyName}</p>
                       <p className="mt-1 truncate text-[12px] text-[#53675A]">{application.role}</p>
@@ -1307,9 +1312,7 @@ function ApplicationsView({
                     <span className={cn("size-2.5 rounded-full shadow-[0_0_0_4px_rgba(255,255,255,0.9)]", statusMeta[status].dot)} />
                     <p className="text-[14px] font-semibold tracking-[-0.02em] text-[#18181B]">{status}</p>
                   </div>
-                  <Badge variant="secondary" className="h-7 rounded-xl border border-[#D8E3D4] bg-[#F4F8EF] font-mono text-[11px] text-[#53675A]">
-                    {laneItems.length}
-                  </Badge>
+                  <span className="font-mono text-[11px] text-[#53675A] tabular-nums">{laneItems.length}</span>
                 </div>
                 <div className="grid gap-3 overflow-y-auto p-3">
                   {laneItems.length ? (
@@ -1512,15 +1515,11 @@ function ApplicationCard({
       <div className="grid gap-2">
         <div className="flex items-center justify-between gap-2">
           <span className="font-mono text-[11px] text-[#53675A]">{formatCurrency(application.salary)}</span>
-          {application.sourcePlatform ? (
-            <span className="rounded-xl border border-[#D8E3D4] bg-[#F4F8EF] px-2 py-1 font-mono text-[10px] text-[#53675A]">
-              via {application.sourcePlatform}
-            </span>
-          ) : null}
+          {application.sourcePlatform ? <span className="font-mono text-[10px] text-[#53675A]">via {application.sourcePlatform}</span> : null}
         </div>
         <div className="flex items-center justify-between gap-2">
           <span className="font-mono text-[11px] text-[#53675A]">Applied: {application.applicationDate}</span>
-          <FollowUpBadge application={application} />
+          {application.followUpDate ? <span className="font-mono text-[11px] text-[#53675A]">Follow-up: {application.followUpDate}</span> : null}
         </div>
         <Select value={application.status} onValueChange={(value) => updateApplication(application.id, { status: value as ApplicationStatus })}>
           <SelectTrigger className={cn("h-9 rounded-2xl border text-[12px]", statusMeta[application.status].border, statusMeta[application.status].wash)}>
@@ -1578,24 +1577,6 @@ function ApplicationCard({
         </div>
       </div>
     </div>
-  );
-}
-
-function FollowUpBadge({ application }: { application: Application }) {
-  const state = followUpState(application);
-  if (state === "none") return null;
-  return (
-    <Badge
-      variant="outline"
-      className={cn(
-        "h-6 rounded px-1.5 font-mono text-[10px]",
-        state === "overdue" && "border-[#B94A48]/30 bg-[#FFF4F2] text-[#B94A48]",
-        state === "upcoming" && "border-[#B7791F]/30 bg-[#FFF8EA] text-[#B7791F]",
-        state === "scheduled" && "border-[#D8E3D4] bg-[#F4F8EF] text-[#53675A]",
-      )}
-    >
-      {state}
-    </Badge>
   );
 }
 
@@ -1684,7 +1665,7 @@ function ResumeView({
 
       <div className="grid gap-5 xl:grid-cols-[0.84fr_1.16fr]">
         <section className="overflow-hidden rounded-[28px] border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-48px_rgba(15,28,21,0.7)]">
-          <SectionHeader title="Analysis context" icon={<FileText className="size-4 text-[#53675A]" />} action="ready" />
+          <SectionHeader title="Analysis context" icon={<FileText className="size-4 text-[#53675A]" />} />
           <div className="grid gap-4 p-4">
             {resumeError ? <ErrorNotice message={resumeError} /> : null}
             <div className="grid gap-2">
@@ -1747,7 +1728,7 @@ function ResumeView({
           </div>
         </section>
         <section className="overflow-hidden rounded-[28px] border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-48px_rgba(15,28,21,0.7)]">
-          <SectionHeader title="Analysis results" icon={<BarChart3 className="size-4 text-[#53675A]" />} action="saved locally" />
+          <SectionHeader title="Analysis results" icon={<BarChart3 className="size-4 text-[#53675A]" />} />
           <div className="p-4">
             {busy ? (
               <AnalysisSkeleton />
@@ -1810,19 +1791,18 @@ function InsightList({
     return (
       <div className="rounded-[22px] border border-[#D8E3D4] bg-white/74 p-3">
         <p className="border-b border-[#D8E3D4] pb-2 font-mono text-[12px] font-medium uppercase text-[#53675A]">{title}</p>
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="mt-2 grid gap-2">
           {items.map((item) => (
-            <Badge
+            <div
               key={item}
-              variant="outline"
               className={cn(
-                "rounded-xl px-2 py-1 font-mono text-[11px]",
-                tone === "risk" && "border-[#B94A48]/20 bg-[#FFF4F2] text-[#93000A]",
-                tone === "success" && "border-[#2F8F5B]/20 bg-[#EBF7EF] text-[#1B7A4E]",
+                "border-l-2 bg-[#F4F8EF] px-3 py-2 text-[12px] leading-5",
+                tone === "risk" && "border-[#B94A48] bg-[#FFF4F2] text-[#93000A]",
+                tone === "success" && "border-[#2F8F5B] bg-[#EBF7EF] text-[#1B7A4E]",
               )}
             >
               {item}
-            </Badge>
+            </div>
           ))}
         </div>
       </div>
@@ -1923,7 +1903,7 @@ function InterviewView({
             key={group.category}
             className="overflow-hidden rounded-[28px] border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-50px_rgba(15,28,21,0.68)]"
           >
-            <SectionHeader title={group.category} action={`${group.questions.length} prompts`} />
+            <SectionHeader title={group.category} />
             <div className="grid gap-3 bg-[#F1F6ED] p-3 md:grid-cols-2 xl:grid-cols-3">
               {group.questions.length ? (
                 group.questions.map((question) => (
@@ -1966,12 +1946,16 @@ function SettingsView({
   name,
   setName,
   saveName,
+  clearAllData,
+  clearingData,
 }: {
   guest: Guest | null;
   quota: AiQuota;
   name: string;
   setName: (name: string) => void;
   saveName: () => void;
+  clearAllData: () => void;
+  clearingData: boolean;
 }) {
   return (
     <div className="grid max-w-5xl gap-5">
@@ -2002,18 +1986,15 @@ function SettingsView({
           </div>
         </section>
         <section className="overflow-hidden rounded-[28px] border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-50px_rgba(15,28,21,0.68)]">
-          <SectionHeader title="AI usage" action="daily reset" />
+          <SectionHeader title="AI usage" />
           <div className="p-4">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <p className="font-mono text-[42px] font-semibold leading-none tracking-[-0.04em] text-[#17201B]">
-                  {quota.used}/{quota.limit}
-                </p>
-                <p className="mt-2 text-[13px] text-[#53675A]">actions used today</p>
-              </div>
-              <div className="grid size-14 place-items-center rounded-2xl bg-[#DDE85F] font-mono text-[12px] font-semibold text-[#17201B]">
-                {quota.remaining} left
-              </div>
+            <div>
+              <p className="font-mono text-[42px] font-semibold leading-none tracking-[-0.04em] text-[#17201B] tabular-nums">
+                {quota.used}/{quota.limit}
+              </p>
+              <p className="mt-2 text-[13px] text-[#53675A]">
+                actions used today, {quota.remaining} remaining
+              </p>
             </div>
             <Progress value={getQuotaProgressValue(quota)} className="mt-5 h-2 rounded-full" />
             <p className="mt-4 rounded-2xl border border-[#D8E3D4] bg-[#F4F8EF] p-3 text-[13px] leading-6 text-[#53675A]">
@@ -2022,6 +2003,56 @@ function SettingsView({
           </div>
         </section>
       </div>
+      <section className="overflow-hidden rounded-[28px] border border-[#E3AAA8] bg-[#FFF4F2] shadow-[0_24px_60px_-50px_rgba(80,20,18,0.35)]">
+        <SectionHeader title="Local data" />
+        <div className="grid gap-4 p-4 md:grid-cols-[1fr_auto] md:items-center">
+          <div>
+            <p className="text-[15px] font-semibold tracking-[-0.02em] text-[#17201B]">Clear this workspace</p>
+            <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[#68413F]">
+              Deletes every guest, application, resume analysis, interview note, activity entry, and AI usage counter from the local JSON file.
+            </p>
+          </div>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="h-11 rounded-2xl border-[#B94A48]/35 bg-white/70 px-4 font-mono text-[12px] text-[#93000A] hover:bg-white hover:text-[#93000A] active:scale-[0.98]"
+              >
+                <Trash2 className="size-4" />
+                Clear all data
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="rounded-3xl border-[#E3AAA8] bg-[#FFF9F7] shadow-[0_32px_80px_-42px_rgba(80,20,18,0.6)]">
+              <DialogHeader>
+                <div className="mb-1 grid size-11 place-items-center rounded-2xl bg-[#FFF4F2] text-[#B94A48]">
+                  <AlertTriangle className="size-5" />
+                </div>
+                <DialogTitle className="tracking-[-0.04em]">Clear all local data?</DialogTitle>
+                <DialogDescription className="text-[#68413F]">
+                  This removes the JSON workspace and signs out the current browser session. The action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button
+                    variant="outline"
+                    className="h-11 rounded-2xl border-[#D8E3D4] bg-white px-4 font-mono text-[12px] text-[#17201B] hover:bg-[#F4F8EF]"
+                  >
+                    Cancel
+                  </Button>
+                </DialogClose>
+                <Button
+                  onClick={clearAllData}
+                  disabled={clearingData}
+                  className="h-11 rounded-2xl bg-[#B94A48] px-4 font-mono text-[12px] text-white hover:bg-[#9F3836] active:scale-[0.98]"
+                >
+                  {clearingData ? "Clearing" : "Clear all data"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </section>
     </div>
   );
 }

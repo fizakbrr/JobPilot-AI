@@ -43,3 +43,8 @@ export async function createOrUpdateGuestSession(name: string) {
 
   return guest;
 }
+
+export async function clearGuestSession() {
+  const cookieStore = await cookies();
+  cookieStore.delete(guestCookieName);
+}

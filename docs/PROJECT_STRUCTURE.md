@@ -20,7 +20,6 @@ JobPilot keeps framework routes, product code, design references, and generated 
   - `types.ts` for shared product types.
   - `validators.ts` for API input schemas.
 - `lib/utils.ts` stays at the top level because shadcn/ui components import it directly.
-- `content/jobpilot/` contains editable local starter data that seeds new guest workspaces.
 
 ## Brand And Design Assets
 

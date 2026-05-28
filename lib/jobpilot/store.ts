@@ -3,7 +3,6 @@ import "server-only";
 import { promises as fs } from "node:fs";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import starterApplications from "@/content/jobpilot/starter-applications.json";
 import { createAiQuotaSnapshot, getDailyAiActionLimit } from "@/lib/jobpilot/config";
 import {
   APPLICATION_STATUSES,
@@ -17,11 +16,6 @@ import {
   type JobPilotDatabase,
   type ResumeAnalysis,
 } from "@/lib/jobpilot/types";
-
-type StarterApplication = Omit<Application, "id" | "guestId" | "applicationDate" | "followUpDate" | "createdAt" | "updatedAt"> & {
-  applicationDateDaysAgo: number;
-  followUpDateDaysFromNow: number | null;
-};
 
 const dataDirectory =
   process.env.JOBPILOT_DATA_DIR || (process.env.VERCEL ? path.join("/tmp", "jobpilot") : path.join(process.cwd(), "data"));
@@ -66,6 +60,11 @@ export async function writeDatabase(database: JobPilotDatabase) {
   await fs.writeFile(dataPath, JSON.stringify(normalizeDatabase(database), null, 2), "utf8");
 }
 
+export async function resetDatabase() {
+  await ensureDatabase();
+  await fs.writeFile(dataPath, JSON.stringify(cloneEmptyDatabase(), null, 2), "utf8");
+}
+
 export async function transact<T>(callback: (database: JobPilotDatabase) => T | Promise<T>) {
   const database = await readDatabase();
   const result = await callback(database);
@@ -96,7 +95,6 @@ export async function createGuest(name: string) {
       updatedAt: timestamp,
     };
     database.guests.push(guest);
-    seedGuestData(database, guest.id);
     return guest;
   });
 }
@@ -217,47 +215,6 @@ export function consumeAiQuota(database: JobPilotDatabase, guestId: string) {
   usage.count += 1;
 
   return { allowed: true, quota: getAiQuota(database, guestId) };
-}
-
-function seedGuestData(database: JobPilotDatabase, guestId: string) {
-  const timestamp = nowIso();
-  const today = new Date();
-  const dateDaysAgo = (days: number) => {
-    const date = new Date(today);
-    date.setDate(today.getDate() - days);
-    return date.toISOString().slice(0, 10);
-  };
-  const dateDaysFromNow = (days: number) => {
-    const date = new Date(today);
-    date.setDate(today.getDate() + days);
-    return date.toISOString().slice(0, 10);
-  };
-
-  for (const sample of starterApplications as StarterApplication[]) {
-    const application: Application = {
-      id: createId("app"),
-      guestId,
-      companyName: sample.companyName,
-      role: sample.role,
-      location: sample.location,
-      salary: sample.salary,
-      sourcePlatform: sample.sourcePlatform,
-      jobUrl: sample.jobUrl,
-      applicationDate: dateDaysAgo(sample.applicationDateDaysAgo),
-      status: sample.status,
-      notes: sample.notes,
-      followUpDate:
-        sample.followUpDateDaysFromNow === null ? null : dateDaysFromNow(sample.followUpDateDaysFromNow),
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    };
-    database.applications.push(application);
-    addActivity(database, {
-      guestId,
-      applicationId: application.id,
-      label: `Added ${application.companyName} to ${application.status}`,
-    });
-  }
 }
 
 export type ApplicationDetailBundle = {
