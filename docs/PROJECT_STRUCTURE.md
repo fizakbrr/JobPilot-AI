@@ -25,9 +25,9 @@ JobPilot keeps framework routes, product code, design references, and generated 
 
 ## Brand And Design Assets
 
-- `assets/brand/` stores source brand assets.
-- `public/brand/` stores runtime brand assets served by Next.js.
+- `public/brand/` stores canonical brand assets served by Next.js.
 - `.stitch/` stores Google Stitch design references, prompts, and exported screen artifacts. Raw API responses are ignored by git.
+- `docs/DEPLOYMENT.md`, `docs/RELEASE_AUDIT.md`, and `docs/SECURITY_THREAT_MODEL.md` document public-release operations and risk controls.
 
 ## Local Generated Files
 

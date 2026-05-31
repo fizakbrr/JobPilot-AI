@@ -8,7 +8,6 @@ export function routeErrorResponse(error: unknown, fallbackMessage = "Request fa
     return NextResponse.json({ error: "Enter your name to start." }, { status: 401 });
   }
 
-  console.error(error);
   return NextResponse.json({ error: fallbackMessage }, { status: 500 });
 }
 
