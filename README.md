@@ -66,26 +66,11 @@ docs/                   Architecture, security, deployment, and release notes
 
 Detailed structure notes live in [`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md).
 
-Release-readiness notes live in [`docs/RELEASE_AUDIT.md`](docs/RELEASE_AUDIT.md).
-
 ## Security
 
 Read [`docs/SECURITY_THREAT_MODEL.md`](docs/SECURITY_THREAT_MODEL.md) for the current threat model.
 
 Security issues should be reported using [`SECURITY.md`](SECURITY.md), not public GitHub issues.
-
-## Contributing
-
-Contributions are welcome. Start with [`CONTRIBUTING.md`](CONTRIBUTING.md).
-
-Before opening a pull request, run:
-
-```bash
-npm run typecheck
-npm run lint
-npm run build
-npm audit
-```
 
 ## License
 
