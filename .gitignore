@@ -4,8 +4,13 @@
 
 node_modules/
 data/
+
+# Local agent/design workspaces
 .agents/
 .stitch/
+.stitch/**
+*.pen
+
 .next/
 .vercel/
 .playwright-cli/
