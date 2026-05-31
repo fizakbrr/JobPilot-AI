@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -1019,7 +1020,7 @@ function LandingPage({ onStart }: { onStart: () => void }) {
                 className="landing-reveal rounded-[30px] border border-[#D8E3D4] bg-[#F9FBF4] p-2 shadow-[0_24px_60px_-52px_rgba(15,28,21,0.7)]"
                 style={{ animationDelay: `${180 + index * 100}ms` }}
               >
-                <div className="grid gap-5 rounded-[24px] bg-white/76 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] md:grid-cols-[auto_1fr_auto] md:items-center">
+                <div className="grid gap-5 rounded-3xl bg-white/76 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] md:grid-cols-[auto_1fr_auto] md:items-center">
                   <div className="grid size-12 place-items-center rounded-2xl bg-[#17201B] text-[#F7FAF1]">
                     <Icon className="size-5" strokeWidth={1.4} />
                   </div>
@@ -1042,7 +1043,7 @@ function LandingPage({ onStart }: { onStart: () => void }) {
               <div className="mb-5 flex h-10 w-32 items-center">
                 <Image src="/brand/logo-complete.svg" alt={APP_CONFIG.name} width={154} height={50} className="h-auto w-full brightness-0 invert" />
               </div>
-              <h2 className="max-w-2xl text-[34px] font-semibold leading-[1] tracking-[-0.06em] text-balance md:text-[52px]">
+              <h2 className="max-w-2xl text-[34px] font-semibold leading-none tracking-[-0.06em] text-balance md:text-[52px]">
                 Start clean. Keep the job hunt readable.
               </h2>
               <p className="mt-4 max-w-xl text-[14px] leading-7 text-[#BFD1C4]">
@@ -1163,7 +1164,7 @@ function Navigation({
         <div className="rounded-2xl border border-white/10 bg-white/6 p-4 backdrop-blur">
           <p className="font-mono text-[11px] font-semibold uppercase text-[#EAF4EC]">{APP_CONFIG.guestModeTitle}</p>
           <p className="mt-1 text-[13px] leading-5 text-[#91A99A]">No login. {formatAiActionLimit(quota.limit)} reset daily.</p>
-          <Progress value={getQuotaProgressValue(quota, "remaining")} className="mt-4 h-1.5 bg-white/10 [&_[data-slot=progress-indicator]]:bg-[#DDE85F]" />
+          <Progress value={getQuotaProgressValue(quota, "remaining")} className="mt-4 h-1.5 bg-white/10 **:data-[slot=progress-indicator]:bg-[#DDE85F]" />
         </div>
       </div>
     </div>
