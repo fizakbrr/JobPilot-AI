@@ -15,7 +15,9 @@ JobPilot keeps framework routes, product code, design references, and generated 
   - `ai.ts` for Gemini integration and local AI-style fallback responses.
   - `config.ts` for app metadata and configurable AI quota defaults.
   - `guest.ts` for name-only guest sessions.
+  - `rate-limit.ts` for lightweight server-side traffic controls.
   - `route-errors.ts` for consistent API error responses.
+  - `sanitize.ts` for shared input and AI-output sanitization.
   - `store.ts` for local JSON storage, IDs, analytics, and AI quota handling.
   - `types.ts` for shared product types.
   - `validators.ts` for API input schemas.

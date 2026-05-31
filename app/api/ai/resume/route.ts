@@ -1,22 +1,38 @@
 import { NextResponse } from "next/server";
 import { analyzeResumeWithAI } from "@/lib/jobpilot/ai";
 import { requireGuest } from "@/lib/jobpilot/guest";
+import { RATE_LIMITS, rateLimit } from "@/lib/jobpilot/rate-limit";
 import { routeErrorResponse, validationErrorResponse } from "@/lib/jobpilot/route-errors";
-import { addActivity, consumeAiQuota, createId, nowIso, transact } from "@/lib/jobpilot/store";
+import { addActivity, consumeAiQuota, createId, getAiQuota, nowIso, transact } from "@/lib/jobpilot/store";
 import { resumeAnalyzeSchema } from "@/lib/jobpilot/validators";
 
 export async function POST(request: Request) {
   try {
+    const limited = rateLimit(request, RATE_LIMITS.ai);
+    if (limited) return limited;
+
     const guest = await requireGuest();
     const parsed = resumeAnalyzeSchema.safeParse(await request.json());
     if (!parsed.success) {
       return validationErrorResponse(parsed.error.issues[0]?.message ?? "Invalid resume request.");
     }
 
-    const quotaCheck = await transact((database) => consumeAiQuota(database, guest.id));
+    const quotaCheck = await transact((database) => {
+      if (parsed.data.applicationId) {
+        const application = database.applications.find(
+          (item) => item.id === parsed.data.applicationId && item.guestId === guest.id,
+        );
+        if (!application) return { allowed: false as const, missingApplication: true as const, quota: getAiQuota(database, guest.id) };
+      }
+      return consumeAiQuota(database, guest.id);
+    });
+    if ("missingApplication" in quotaCheck) {
+      return NextResponse.json({ error: "Application not found." }, { status: 404 });
+    }
+
     if (!quotaCheck.allowed) {
       return NextResponse.json(
-        { error: "Daily AI limit reached. Come back tomorrow to run more AI actions.", quota: quotaCheck.quota },
+        { error: "Daily AI limit reached. You can keep tracking applications and come back tomorrow for more AI help.", quota: quotaCheck.quota },
         { status: 429 },
       );
     }

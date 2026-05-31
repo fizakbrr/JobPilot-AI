@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -108,6 +109,9 @@ const initialApplicationForm = {
 type ApplicationFormState = typeof initialApplicationForm;
 type ApplicationFormErrors = Partial<Record<keyof ApplicationFormState, string>>;
 
+const springTransition = { type: "spring", stiffness: 260, damping: 30, mass: 0.82 } as const;
+const viewTransition = { type: "spring", stiffness: 220, damping: 28, mass: 0.9 } as const;
+
 const statusMeta: Record<ApplicationStatus, { dot: string; border: string; label: string; stripe: string; wash: string }> = {
   Wishlist: {
     dot: "bg-[#91A99A]",
@@ -160,6 +164,39 @@ const statusMeta: Record<ApplicationStatus, { dot: string; border: string; label
   },
 };
 
+const onboardingSteps = [
+  {
+    view: "dashboard",
+    title: "Start with a calm overview.",
+    body: "The dashboard gives you the current shape of your search: open roles, follow-ups, interview progress, and AI usage. Check it when you need direction.",
+    outcome: "You will always know what needs attention next.",
+  },
+  {
+    view: "applications",
+    title: "Add each opportunity once.",
+    body: "Capture the company, role, source, salary, dates, and notes while the details are fresh. Move cards only when the stage changes.",
+    outcome: "Your board stays accurate without turning into extra admin work.",
+  },
+  {
+    view: "resume",
+    title: "Use resume feedback carefully.",
+    body: "Paste a role description and your resume, or upload a PDF. JobPilot points out gaps and draft improvements, but you stay in control of what you use.",
+    outcome: "You get sharper edits without overstating your experience.",
+  },
+  {
+    view: "interviews",
+    title: "Prepare for the next conversation.",
+    body: "Generate role-specific practice prompts, mark what you have rehearsed, and keep rough notes beside each question.",
+    outcome: "Preparation becomes trackable instead of scattered.",
+  },
+  {
+    view: "settings",
+    title: "Keep the workspace under your control.",
+    body: "Settings holds your display name, AI quota, and local data controls. You can clear the workspace whenever you need a clean start.",
+    outcome: "No account is required, and your local data remains visible to you.",
+  },
+] as const satisfies ReadonlyArray<{ view: View; title: string; body: string; outcome: string }>;
+
 function formatCurrency(value: number | null) {
   if (!value) return "Not set";
   return new Intl.NumberFormat("en-US", {
@@ -200,6 +237,15 @@ function validateApplicationForm(form: ApplicationFormState) {
 
 function formatAiActionLimit(limit: number) {
   return `${limit} AI ${limit === 1 ? "action" : "actions"}`;
+}
+
+function statusToastMessage(status: ApplicationStatus) {
+  if (status === "Applied") return "Application logged. Great work.";
+  if (status === "Rejected") return "Archived. Keep the momentum going on your other applications.";
+  if (status === "Offer") return "Offer saved. Review the details when you are ready.";
+  if (status === "Screening") return "Screening step saved. Note the next follow-up while it is fresh.";
+  if (status === "Technical Interview" || status === "HR Interview") return "Interview stage saved. Add preparation notes when you can.";
+  return "Application stage updated.";
 }
 
 async function extractPdfText(file: File) {
@@ -267,6 +313,8 @@ export function JobPilotApp() {
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [addSheetOpen, setAddSheetOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0);
   const normalizedQuota = normalizeAiQuota(quota);
 
   const selectedApplication =
@@ -318,6 +366,16 @@ export function JobPilotApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!loading && showWorkspace && guest && !guest.onboardingCompletedAt) {
+      queueMicrotask(() => {
+        setOnboardingStep(0);
+        setView(onboardingSteps[0].view);
+        setOnboardingOpen(true);
+      });
+    }
+  }, [guest, loading, showWorkspace]);
+
   async function saveName() {
     setBusyAction("name");
     try {
@@ -332,7 +390,7 @@ export function JobPilotApp() {
       setQuota(normalizeAiQuota(payload.quota));
       setName(payload.guest.name);
       await refreshData();
-      toast.success("Workspace ready.");
+      toast.success("Workspace ready. Add one application when you are ready.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not save your name.");
     } finally {
@@ -365,7 +423,7 @@ export function JobPilotApp() {
       setApplicationFormError(null);
       setAddSheetOpen(false);
       await refreshData();
-      toast.success("Application added.");
+      toast.success("Application saved. Your board is up to date.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not add application.";
       setApplicationFormError(message);
@@ -377,6 +435,7 @@ export function JobPilotApp() {
 
   async function updateApplication(id: string, patch: Partial<Application>) {
     setBusyAction(`application-${id}`);
+    const previous = data.applications.find((application) => application.id === id);
     try {
       await readJson<{ application: Application }>(
         await fetch(`/api/applications/${id}`, {
@@ -386,6 +445,9 @@ export function JobPilotApp() {
         }),
       );
       await refreshData();
+      if (patch.status && patch.status !== previous?.status) {
+        toast.success(statusToastMessage(patch.status));
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not update application.");
     } finally {
@@ -398,7 +460,7 @@ export function JobPilotApp() {
     try {
       await readJson<{ ok: boolean }>(await fetch(`/api/applications/${id}`, { method: "DELETE" }));
       await refreshData();
-      toast.success("Application removed.");
+      toast.success("Application removed from this board.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not remove application.");
     } finally {
@@ -543,6 +605,41 @@ export function JobPilotApp() {
     }
   }
 
+  async function completeOnboarding() {
+    setBusyAction("onboarding");
+    try {
+      const payload = await readJson<{ guest: Guest; quota: AiQuota }>(
+        await fetch("/api/session", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ onboardingCompleted: true }),
+        }),
+      );
+      setGuest(payload.guest);
+      setQuota(normalizeAiQuota(payload.quota));
+      setOnboardingOpen(false);
+      toast.success("Walkthrough saved. Your workspace is ready.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save walkthrough progress.");
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  function moveOnboarding(toStep: number) {
+    const nextStep = Math.max(0, Math.min(onboardingSteps.length - 1, toStep));
+    setOnboardingStep(nextStep);
+    setView(onboardingSteps[nextStep].view);
+    setMobileNavOpen(false);
+    setAddSheetOpen(false);
+  }
+
+  function startOnboarding() {
+    setOnboardingStep(0);
+    setView(onboardingSteps[0].view);
+    setOnboardingOpen(true);
+  }
+
   const openAdd = () => {
     setView("applications");
     setAddSheetOpen(true);
@@ -566,7 +663,7 @@ export function JobPilotApp() {
             <div className="mb-4 flex h-12 w-40 items-center">
               <Image src="/brand/logo-complete.svg" alt={APP_CONFIG.name} width={154} height={50} className="h-auto w-full" priority />
             </div>
-            <DialogTitle className="text-[22px] tracking-[-0.04em]">Name your command desk</DialogTitle>
+            <DialogTitle className="text-[22px] tracking-[-0.04em]">Name your workspace</DialogTitle>
             <DialogDescription className="text-[#53675A]">
               No account required. This browser gets its own JobPilot workspace.
             </DialogDescription>
@@ -594,6 +691,17 @@ export function JobPilotApp() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {guest ? (
+        <OnboardingWalkthrough
+          open={onboardingOpen}
+          step={onboardingStep}
+          busy={busyAction === "onboarding"}
+          onBack={() => moveOnboarding(onboardingStep - 1)}
+          onNext={() => moveOnboarding(onboardingStep + 1)}
+          onGoTo={moveOnboarding}
+          onFinish={completeOnboarding}
+        />
+      ) : null}
 
       <div className="relative grid min-h-dvh grid-cols-1 lg:grid-cols-[284px_1fr]">
         <aside className="hidden border-r border-white/10 bg-[#102018]/95 text-[#F7FAF1] shadow-[22px_0_70px_-48px_rgba(0,0,0,0.9)] lg:block">
@@ -610,79 +718,92 @@ export function JobPilotApp() {
           />
           {mobileNavOpen ? <div className="border-b border-[#DDE6D7] bg-[#102018] text-[#F7FAF1] lg:hidden">{nav}</div> : null}
           <div className="mx-auto max-w-375 px-4 py-5 md:px-7 md:py-7">
-            {view === "dashboard" ? (
-              <DashboardView
-                data={data}
-                quota={normalizedQuota}
-                upcomingFollowUps={upcomingFollowUps}
-                setView={setView}
-                setSelectedApplicationId={setSelectedApplicationId}
-                onAdd={openAdd}
-              />
-            ) : null}
-            {view === "applications" ? (
-              <ApplicationsView
-                applications={filteredApplications}
-                statusFilter={statusFilter}
-                setStatusFilter={setStatusFilter}
-                sourceFilter={sourceFilter}
-                setSourceFilter={setSourceFilter}
-                sources={sources}
-                form={applicationForm}
-                setForm={setApplicationForm}
-                errors={applicationFormErrors}
-                formError={applicationFormError}
-                createApplication={createApplication}
-                updateApplication={updateApplication}
-                deleteApplication={deleteApplication}
-                busyAction={busyAction}
-                addSheetOpen={addSheetOpen}
-                setAddSheetOpen={setAddSheetOpen}
-              />
-            ) : null}
-            {view === "resume" ? (
-              <ResumeView
-                applications={data.applications}
-                selectedApplicationId={selectedApplication?.id ?? ""}
-                setSelectedApplicationId={setSelectedApplicationId}
-                resumeText={resumeText}
-                setResumeText={setResumeText}
-                jobDescription={jobDescription}
-                setJobDescription={setJobDescription}
-                analyzeResume={analyzeResume}
-                busy={busyAction === "resume"}
-                analysis={activeAnalysis ?? data.analyses[0] ?? null}
-                quota={normalizedQuota}
-                importResumePdf={importResumePdf}
-                resumeFileName={resumeFileName}
-                resumeFileError={resumeFileError}
-                resumeFileLoading={resumeFileLoading}
-                resumeError={resumeError}
-              />
-            ) : null}
-            {view === "interviews" ? (
-              <InterviewView
-                applications={data.applications}
-                selectedApplicationId={selectedApplication?.id ?? ""}
-                setSelectedApplicationId={setSelectedApplicationId}
-                questions={data.questions}
-                generateInterviewQuestions={generateInterviewQuestions}
-                updateQuestion={updateQuestion}
-                busy={busyAction === "interviews"}
-                quota={normalizedQuota}
-              />
-            ) : null}
-            {view === "settings" ? (
-              <SettingsView
-                guest={guest}
-                quota={normalizedQuota}
-                name={name}
-                setName={setName}
-                saveName={saveName}
-                clearAllData={clearAllData}
-                clearingData={busyAction === "clear-data"}
-              />
-            ) : null}
+            <AnimatePresence mode="wait" initial={false}>
+              {view === "dashboard" ? (
+                <motion.div key="dashboard" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={viewTransition}>
+                  <DashboardView
+                    data={data}
+                    quota={normalizedQuota}
+                    upcomingFollowUps={upcomingFollowUps}
+                    setView={setView}
+                    setSelectedApplicationId={setSelectedApplicationId}
+                    onAdd={openAdd}
+                  />
+                </motion.div>
+              ) : null}
+              {view === "applications" ? (
+                <motion.div key="applications" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={viewTransition}>
+                  <ApplicationsView
+                    applications={filteredApplications}
+                    statusFilter={statusFilter}
+                    setStatusFilter={setStatusFilter}
+                    sourceFilter={sourceFilter}
+                    setSourceFilter={setSourceFilter}
+                    sources={sources}
+                    form={applicationForm}
+                    setForm={setApplicationForm}
+                    errors={applicationFormErrors}
+                    formError={applicationFormError}
+                    createApplication={createApplication}
+                    updateApplication={updateApplication}
+                    deleteApplication={deleteApplication}
+                    busyAction={busyAction}
+                    addSheetOpen={addSheetOpen}
+                    setAddSheetOpen={setAddSheetOpen}
+                  />
+                </motion.div>
+              ) : null}
+              {view === "resume" ? (
+                <motion.div key="resume" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={viewTransition}>
+                  <ResumeView
+                    applications={data.applications}
+                    selectedApplicationId={selectedApplication?.id ?? ""}
+                    setSelectedApplicationId={setSelectedApplicationId}
+                    resumeText={resumeText}
+                    setResumeText={setResumeText}
+                    jobDescription={jobDescription}
+                    setJobDescription={setJobDescription}
+                    analyzeResume={analyzeResume}
+                    busy={busyAction === "resume"}
+                    analysis={activeAnalysis ?? data.analyses[0] ?? null}
+                    quota={normalizedQuota}
+                    importResumePdf={importResumePdf}
+                    resumeFileName={resumeFileName}
+                    resumeFileError={resumeFileError}
+                    resumeFileLoading={resumeFileLoading}
+                    resumeError={resumeError}
+                  />
+                </motion.div>
+              ) : null}
+              {view === "interviews" ? (
+                <motion.div key="interviews" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={viewTransition}>
+                  <InterviewView
+                    applications={data.applications}
+                    selectedApplicationId={selectedApplication?.id ?? ""}
+                    setSelectedApplicationId={setSelectedApplicationId}
+                    questions={data.questions}
+                    generateInterviewQuestions={generateInterviewQuestions}
+                    updateQuestion={updateQuestion}
+                    busy={busyAction === "interviews"}
+                    quota={normalizedQuota}
+                  />
+                </motion.div>
+              ) : null}
+              {view === "settings" ? (
+                <motion.div key="settings" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={viewTransition}>
+                  <SettingsView
+                    guest={guest}
+                    quota={normalizedQuota}
+                    name={name}
+                    setName={setName}
+                    saveName={saveName}
+                    clearAllData={clearAllData}
+                    clearingData={busyAction === "clear-data"}
+                    startOnboarding={startOnboarding}
+                  />
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
           </div>
         </main>
       </div>
@@ -707,6 +828,115 @@ const landingFlow = [
     icon: ShieldCheck,
   },
 ] as const;
+
+function OnboardingWalkthrough({
+  open,
+  step,
+  busy,
+  onBack,
+  onNext,
+  onGoTo,
+  onFinish,
+}: {
+  open: boolean;
+  step: number;
+  busy: boolean;
+  onBack: () => void;
+  onNext: () => void;
+  onGoTo: (step: number) => void;
+  onFinish: () => void;
+}) {
+  const current = onboardingSteps[step];
+  const isLast = step === onboardingSteps.length - 1;
+
+  return (
+    <Dialog open={open}>
+      <DialogContent
+        showCloseButton={false}
+        className="overflow-hidden rounded-[30px] border-[#D8E3D4] bg-[#F8FAF3] p-0 shadow-[0_34px_90px_-42px_rgba(7,24,14,0.82)] sm:max-w-2xl"
+      >
+        <div className="grid gap-0 md:grid-cols-[0.42fr_0.58fr]">
+          <div className="bg-[#17201B] p-5 text-[#F7FAF1]">
+            <div className="flex h-10 w-32 items-center">
+              <Image src="/brand/logo-complete.svg" alt={APP_CONFIG.name} width={154} height={50} className="h-auto w-full brightness-0 invert" />
+            </div>
+            <div className="mt-10 space-y-3">
+              {onboardingSteps.map((item, index) => (
+                <Button
+                  key={item.title}
+                  variant="ghost"
+                  className={cn(
+                    "h-auto w-full justify-start gap-3 rounded-2xl px-3 py-2 text-left transition-[background-color,color,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                    index === step ? "bg-white/12 text-[#F7FAF1]" : "text-[#91A99A] hover:bg-white/8 hover:text-[#F7FAF1]",
+                  )}
+                  onClick={() => onGoTo(index)}
+                >
+                  <span className="font-mono text-[11px] tabular-nums">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="truncate text-[12px] font-medium">{item.view}</span>
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div className="p-5">
+            <DialogHeader>
+              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[#53675A]">
+                Step {step + 1} of {onboardingSteps.length}
+              </p>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={current.title}
+                  initial={{ opacity: 0, y: 16, filter: "blur(6px)" }}
+                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
+                  transition={springTransition}
+                >
+                  <DialogTitle className="mt-3 text-[30px] leading-[0.98] tracking-[-0.06em] text-[#17201B]">{current.title}</DialogTitle>
+                  <DialogDescription className="mt-4 text-[14px] leading-7 text-[#53675A]">{current.body}</DialogDescription>
+                  <div className="mt-5 border-l-2 border-[#1B7A4E] bg-[#EEF6E9] px-4 py-3 text-[13px] leading-6 text-[#2F5D41]">
+                    {current.outcome}
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </DialogHeader>
+            <div className="mt-6 flex items-center gap-2">
+              {onboardingSteps.map((item, index) => (
+                <span key={item.title} className={cn("h-1.5 flex-1 rounded-full bg-[#D8E3D4]", index <= step && "bg-[#1B7A4E]")} />
+              ))}
+            </div>
+            <DialogFooter className="mt-6">
+              <Button
+                variant="outline"
+                onClick={onFinish}
+                disabled={busy}
+                className="h-11 rounded-2xl border-[#D8E3D4] bg-white px-4 font-mono text-[12px] text-[#53675A] hover:bg-[#F4F8EF]"
+              >
+                Skip walkthrough
+              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={onBack}
+                  disabled={step === 0 || busy}
+                  className="h-11 rounded-2xl border-[#D8E3D4] bg-white px-4 font-mono text-[12px] text-[#17201B] hover:bg-[#F4F8EF]"
+                >
+                  Back
+                </Button>
+                <Button
+                  onClick={isLast ? onFinish : onNext}
+                  disabled={busy}
+                  className="h-11 rounded-2xl bg-[#17201B] px-4 font-mono text-[12px] text-[#F7FAF1] hover:bg-[#2A4033] active:scale-[0.98]"
+                >
+                  {busy ? "Saving" : isLast ? "Finish walkthrough" : "Continue"}
+                  {!isLast ? <ArrowRight className="size-4" /> : null}
+                </Button>
+              </div>
+            </DialogFooter>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function LandingPage({ onStart }: { onStart: () => void }) {
   const scrollToFlow = () => document.getElementById("landing-flow")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -775,7 +1005,7 @@ function LandingPage({ onStart }: { onStart: () => void }) {
           <div className="landing-reveal lg:sticky lg:top-8">
             <p className="mb-5 font-mono text-[10px] uppercase tracking-[0.2em] text-[#53675A]">Built for the messy middle</p>
             <h2 className="max-w-xl text-[38px] font-semibold leading-[0.98] tracking-[-0.06em] text-balance md:text-[58px]">
-              A landing page first, then the cockpit.
+              A landing page first, then the workspace.
             </h2>
             <p className="mt-5 max-w-lg text-[15px] leading-7 text-[#53675A]">
               Visitors get the product promise before they enter the tracker. The dashboard stays one click away, and the name prompt only appears when they choose to start.
@@ -906,7 +1136,7 @@ function Navigation({
           className="relative mt-5 h-11 w-full rounded-2xl bg-[#DDE85F] font-mono text-[12px] text-[#17201B] shadow-[0_18px_42px_-26px_rgba(221,232,95,0.85)] hover:bg-[#E9F277] active:scale-[0.98]"
         >
           <Plus className="size-4" />
-          New Application
+          Add application
         </Button>
       </div>
       <div className="flex-1 py-2">
@@ -1033,10 +1263,10 @@ function DashboardView({
         <div className="relative grid gap-6 xl:grid-cols-[1.1fr_0.9fr] xl:items-end">
           <div>
             <h1 className="max-w-2xl text-[40px] font-semibold leading-[0.96] tracking-[-0.06em] text-wrap md:text-[64px]">
-              Make every application feel less random.
+              Make every application easier to follow.
             </h1>
             <p className="mt-5 max-w-xl text-[15px] leading-7 text-[#BFD1C4]">
-              Track the route, catch quiet follow-ups, and use AI only where it sharpens the next move.
+              Track each opportunity, catch quiet follow-ups, and use AI only where it helps you make the next decision.
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <Button
@@ -1132,18 +1362,20 @@ function DashboardView({
                   <ArrowUpRight className="size-4 shrink-0 text-[#91A99A] opacity-0 transition-opacity group-hover:opacity-100" />
                 </Button>
               ))}
-              {!data.applications.length ? <EmptyState title="No applications yet" description="Create the first job card to start the pipeline." /> : null}
+              {!data.applications.length ? (
+                <EmptyState title="No applications added yet" description="Your board is a blank slate. Add your first job application to get started." />
+              ) : null}
             </div>
           </section>
         </div>
 
         <div className="grid gap-4">
           <section className="relative overflow-hidden rounded-[28px] border border-[#17201B] bg-[#17201B] text-[#F7FAF1] shadow-[0_24px_60px_-42px_rgba(15,28,21,0.75)]">
-            <SectionHeader title="AI Copilot Status" icon={<Bot className="size-4 text-[#DDE85F]" />} tone="dark" />
+            <SectionHeader title="AI support" icon={<Bot className="size-4 text-[#DDE85F]" />} tone="dark" />
             <div className="relative z-10 flex items-center gap-4 p-3">
               <ReadinessRing value={readiness} />
               <div>
-                <p className="text-[14px] font-semibold">Ready for dispatch</p>
+                <p className="text-[14px] font-semibold">Ready when you need support</p>
                 <p className="mt-1 text-[12px] leading-5 text-[#BFD1C4]">Use {quota.remaining} more AI actions today.</p>
               </div>
             </div>
@@ -1153,7 +1385,7 @@ function DashboardView({
                 className="h-10 w-full rounded-2xl border-white/12 bg-white/8 font-mono text-[12px] text-[#F7FAF1] hover:bg-white/14 hover:text-[#F7FAF1] active:scale-[0.98]"
                 onClick={() => setView("resume")}
               >
-                Run Diagnostics
+                Scan resume
               </Button>
             </div>
           </section>
@@ -1272,7 +1504,7 @@ function ApplicationsView({
               <SheetTrigger asChild>
                 <Button className="h-11 rounded-2xl bg-[#17201B] px-4 font-mono text-[12px] text-[#F7FAF1] shadow-[0_18px_42px_-30px_rgba(15,28,21,0.9)] hover:bg-[#2A4033] active:scale-[0.98]">
                   <Plus className="size-4" />
-                  New Application
+                  Add application
                 </Button>
               </SheetTrigger>
               <SheetContent className="w-full overflow-y-auto border-[#D8E3D4] bg-[#F8FAF3] sm:max-w-3xl xl:max-w-4xl">
@@ -1327,7 +1559,7 @@ function ApplicationsView({
                     ))
                   ) : (
                     <div className="rounded-[20px] border border-dashed border-[#BFD1C4] bg-white/55 p-4 text-[13px] leading-5 text-[#53675A]">
-                      Nothing here. Move a card forward when the stage changes.
+                      No cards in this stage yet. Move an application here when the status changes.
                     </div>
                   )}
                 </div>
@@ -1493,9 +1725,13 @@ function ApplicationCard({
   busy: boolean;
 }) {
   return (
-    <div
+    <motion.div
+      layout
+      whileHover={{ y: -3 }}
+      whileTap={{ scale: 0.985 }}
+      transition={springTransition}
       className={cn(
-        "group relative overflow-hidden rounded-[22px] border bg-white/90 p-3 shadow-[0_16px_36px_-32px_rgba(15,28,21,0.7)] transition-[border-color,box-shadow,transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_24px_52px_-38px_rgba(15,28,21,0.8)]",
+        "group relative overflow-hidden rounded-[22px] border bg-white/90 p-3 shadow-[0_16px_36px_-32px_rgba(15,28,21,0.7)] transition-[border-color,box-shadow,background-color] duration-200 hover:bg-white hover:shadow-[0_24px_52px_-38px_rgba(15,28,21,0.8)]",
         statusMeta[application.status].border,
       )}
     >
@@ -1576,7 +1812,7 @@ function ApplicationCard({
           </Button>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -1723,7 +1959,7 @@ function ResumeView({
               className="h-11 w-full rounded-2xl bg-[#17201B] font-mono text-[12px] text-[#F7FAF1] shadow-[0_18px_42px_-30px_rgba(15,28,21,0.9)] hover:bg-[#2A4033] active:scale-[0.98]"
             >
               <Bot className="size-4" />
-              {busy ? "Analyzing" : "Run analysis"}
+              {busy ? "Analyzing" : "Analyze resume"}
             </Button>
           </div>
         </section>
@@ -1881,7 +2117,7 @@ function InterviewView({
                 className="h-11 rounded-2xl bg-[#17201B] px-4 font-mono text-[12px] text-[#F7FAF1] hover:bg-[#2A4033] active:scale-[0.98]"
               >
                 <Bot className="size-4" />
-                {busy ? "Generating" : "Generate"}
+                {busy ? "Generating" : "Generate questions"}
               </Button>
             </div>
             <div className="mt-3 flex items-center gap-3 rounded-2xl bg-[#F4F8EF] p-3">
@@ -1948,6 +2184,7 @@ function SettingsView({
   saveName,
   clearAllData,
   clearingData,
+  startOnboarding,
 }: {
   guest: Guest | null;
   quota: AiQuota;
@@ -1956,6 +2193,7 @@ function SettingsView({
   saveName: () => void;
   clearAllData: () => void;
   clearingData: boolean;
+  startOnboarding: () => void;
 }) {
   return (
     <div className="grid max-w-5xl gap-5">
@@ -1982,6 +2220,13 @@ function SettingsView({
               className="h-11 w-fit rounded-2xl bg-[#17201B] px-5 font-mono text-[12px] text-[#F7FAF1] hover:bg-[#2A4033] active:scale-[0.98]"
             >
               Save name
+            </Button>
+            <Button
+              variant="outline"
+              onClick={startOnboarding}
+              className="h-11 w-fit rounded-2xl border-[#D8E3D4] bg-white px-5 font-mono text-[12px] text-[#17201B] hover:bg-[#F4F8EF] active:scale-[0.98]"
+            >
+              Replay walkthrough
             </Button>
           </div>
         </section>
@@ -2130,7 +2375,7 @@ function QuotaBlocked() {
   return (
     <div className="flex items-start gap-3 rounded-2xl border border-[#B94A48]/30 bg-[#FFF4F2] p-3 text-[13px] leading-6 text-[#B94A48]">
       <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-      <span>Daily AI limit reached. Come back tomorrow to run more AI actions.</span>
+      <span>Daily AI limit reached. You can keep tracking applications and come back tomorrow for more AI help.</span>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireGuest } from "@/lib/jobpilot/guest";
+import { RATE_LIMITS, rateLimit } from "@/lib/jobpilot/rate-limit";
 import { routeErrorResponse, validationErrorResponse } from "@/lib/jobpilot/route-errors";
 import {
   addActivity,
@@ -13,8 +14,11 @@ import {
 } from "@/lib/jobpilot/store";
 import { applicationSchema } from "@/lib/jobpilot/validators";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const limited = rateLimit(request, RATE_LIMITS.read);
+    if (limited) return limited;
+
     const guest = await requireGuest();
     const database = await import("@/lib/jobpilot/store").then((module) => module.readDatabase());
     const applications = listGuestApplications(database, guest.id);
@@ -30,6 +34,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const limited = rateLimit(request, RATE_LIMITS.write);
+    if (limited) return limited;
+
     const guest = await requireGuest();
     const parsed = applicationSchema.safeParse(await request.json());
     if (!parsed.success) {
@@ -59,7 +66,7 @@ export async function POST(request: Request) {
       addActivity(database, {
         guestId: guest.id,
         applicationId: nextApplication.id,
-        label: `Created application in ${nextApplication.status}`,
+        label: `Added ${nextApplication.companyName} to ${nextApplication.status}`,
       });
       return nextApplication;
     });

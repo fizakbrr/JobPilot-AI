@@ -23,6 +23,7 @@ export type QuestionCategory = (typeof QUESTION_CATEGORIES)[number];
 export type Guest = {
   id: string;
   name: string;
+  onboardingCompletedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };

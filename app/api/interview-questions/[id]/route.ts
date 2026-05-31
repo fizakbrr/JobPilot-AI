@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireGuest } from "@/lib/jobpilot/guest";
+import { RATE_LIMITS, rateLimit } from "@/lib/jobpilot/rate-limit";
 import { routeErrorResponse, validationErrorResponse } from "@/lib/jobpilot/route-errors";
 import { nowIso, transact } from "@/lib/jobpilot/store";
-import { interviewPatchSchema } from "@/lib/jobpilot/validators";
+import { idSchema, interviewPatchSchema } from "@/lib/jobpilot/validators";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -10,8 +11,14 @@ type RouteContext = {
 
 export async function PATCH(request: Request, context: RouteContext) {
   try {
+    const limited = rateLimit(request, RATE_LIMITS.write);
+    if (limited) return limited;
+
     const guest = await requireGuest();
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const parsedId = idSchema.safeParse(rawId);
+    if (!parsedId.success) return validationErrorResponse("Invalid question id.");
+    const id = parsedId.data;
     const parsed = interviewPatchSchema.safeParse(await request.json());
     if (!parsed.success) {
       return validationErrorResponse(parsed.error.issues[0]?.message ?? "Invalid question update.");

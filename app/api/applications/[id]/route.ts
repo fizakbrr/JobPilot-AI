@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireGuest } from "@/lib/jobpilot/guest";
+import { RATE_LIMITS, rateLimit } from "@/lib/jobpilot/rate-limit";
 import { routeErrorResponse, validationErrorResponse } from "@/lib/jobpilot/route-errors";
 import {
   addActivity,
@@ -10,7 +11,7 @@ import {
   readDatabase,
   transact,
 } from "@/lib/jobpilot/store";
-import { applicationPatchSchema } from "@/lib/jobpilot/validators";
+import { applicationPatchSchema, idSchema } from "@/lib/jobpilot/validators";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -18,8 +19,14 @@ type RouteContext = {
 
 export async function GET(_request: Request, context: RouteContext) {
   try {
+    const limited = rateLimit(_request, RATE_LIMITS.read);
+    if (limited) return limited;
+
     const guest = await requireGuest();
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const parsedId = idSchema.safeParse(rawId);
+    if (!parsedId.success) return validationErrorResponse("Invalid application id.");
+    const id = parsedId.data;
     const database = await readDatabase();
     const application = database.applications.find((item) => item.id === id && item.guestId === guest.id);
 
@@ -40,8 +47,14 @@ export async function GET(_request: Request, context: RouteContext) {
 
 export async function PATCH(request: Request, context: RouteContext) {
   try {
+    const limited = rateLimit(request, RATE_LIMITS.write);
+    if (limited) return limited;
+
     const guest = await requireGuest();
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const parsedId = idSchema.safeParse(rawId);
+    if (!parsedId.success) return validationErrorResponse("Invalid application id.");
+    const id = parsedId.data;
     const parsed = applicationPatchSchema.safeParse(await request.json());
     if (!parsed.success) {
       return validationErrorResponse(parsed.error.issues[0]?.message ?? "Invalid update.");
@@ -64,7 +77,7 @@ export async function PATCH(request: Request, context: RouteContext) {
         addActivity(database, {
           guestId: guest.id,
           applicationId: target.id,
-          label: `Moved from ${previousStatus} to ${parsed.data.status}`,
+          label: statusActivityMessage(parsed.data.status),
         });
       } else {
         addActivity(database, {
@@ -87,10 +100,16 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
   try {
+    const limited = rateLimit(request, RATE_LIMITS.destructive);
+    if (limited) return limited;
+
     const guest = await requireGuest();
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const parsedId = idSchema.safeParse(rawId);
+    if (!parsedId.success) return validationErrorResponse("Invalid application id.");
+    const id = parsedId.data;
     const deleted = await transact((database) => {
       const before = database.applications.length;
       database.applications = database.applications.filter((item) => !(item.id === id && item.guestId === guest.id));
@@ -114,4 +133,11 @@ export async function DELETE(_request: Request, context: RouteContext) {
   } catch (error) {
     return routeErrorResponse(error, "Could not delete application.");
   }
+}
+
+function statusActivityMessage(status: string) {
+  if (status === "Applied") return "Application logged";
+  if (status === "Rejected") return "Archived application";
+  if (status === "Offer") return "Offer recorded";
+  return `Moved to ${status}`;
 }

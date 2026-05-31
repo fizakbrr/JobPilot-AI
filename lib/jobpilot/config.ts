@@ -2,8 +2,8 @@ import type { AiQuota } from "@/lib/jobpilot/types";
 
 export const APP_CONFIG = {
   name: "JobPilot AI",
-  description: "A focused career cockpit for applications, resume checks, follow-ups, and interview prep.",
-  workspaceSubtitle: "Career command desk",
+  description: "A focused workspace for applications, resume checks, follow-ups, and interview prep.",
+  workspaceSubtitle: "Career workspace",
   guestModeTitle: "Guest mode",
   defaultGuestNamePlaceholder: "Your name",
 } as const;

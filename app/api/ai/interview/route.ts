@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { generateInterviewQuestionsWithAI, toInterviewRecords } from "@/lib/jobpilot/ai";
 import { requireGuest } from "@/lib/jobpilot/guest";
+import { RATE_LIMITS, rateLimit } from "@/lib/jobpilot/rate-limit";
 import { routeErrorResponse, validationErrorResponse } from "@/lib/jobpilot/route-errors";
 import { addActivity, consumeAiQuota, getAiQuota, transact } from "@/lib/jobpilot/store";
 import { interviewGenerateSchema } from "@/lib/jobpilot/validators";
 
 export async function POST(request: Request) {
   try {
+    const limited = rateLimit(request, RATE_LIMITS.ai);
+    if (limited) return limited;
+
     const guest = await requireGuest();
     const parsed = interviewGenerateSchema.safeParse(await request.json());
     if (!parsed.success) {
@@ -27,7 +31,7 @@ export async function POST(request: Request) {
 
     if (!quotaCheck.allowed) {
       return NextResponse.json(
-        { error: "Daily AI limit reached. Come back tomorrow to run more AI actions.", quota: quotaCheck.quota },
+        { error: "Daily AI limit reached. You can keep tracking applications and come back tomorrow for more AI help.", quota: quotaCheck.quota },
         { status: 429 },
       );
     }

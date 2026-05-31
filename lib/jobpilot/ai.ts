@@ -1,6 +1,7 @@
 import "server-only";
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { sanitizeText, sanitizeTextList } from "@/lib/jobpilot/sanitize";
 import type { Application, InterviewQuestion, QuestionCategory, ResumeAnalysis } from "@/lib/jobpilot/types";
 import { QUESTION_CATEGORIES } from "@/lib/jobpilot/types";
 import { createId, nowIso } from "@/lib/jobpilot/store";
@@ -110,17 +111,15 @@ ${jobDescription}
 
     return {
       score: Number(parsed.score) || 64,
-      strengths: Array.isArray(parsed.strengths) ? parsed.strengths.filter((item) => typeof item === "string").slice(0, 6) : [],
+      strengths: sanitizeTextList(parsed.strengths, { maxLength: 240 }).slice(0, 6),
       missingKeywords: Array.isArray(parsed.missingKeywords)
-        ? parsed.missingKeywords.filter((item) => typeof item === "string").slice(0, 10)
+        ? sanitizeTextList(parsed.missingKeywords, { maxLength: 80 }).slice(0, 10)
         : [],
-      suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions.filter((item) => typeof item === "string").slice(0, 8) : [],
-      rewrittenBullets: Array.isArray(parsed.rewrittenBullets)
-        ? parsed.rewrittenBullets.filter((item) => typeof item === "string").slice(0, 5)
-        : [],
+      suggestions: sanitizeTextList(parsed.suggestions, { maxLength: 320 }).slice(0, 8),
+      rewrittenBullets: sanitizeTextList(parsed.rewrittenBullets, { maxLength: 360 }).slice(0, 5),
       finalRecommendation:
         typeof parsed.finalRecommendation === "string"
-          ? parsed.finalRecommendation
+          ? sanitizeText(parsed.finalRecommendation, { maxLength: 500 })
           : "Review the AI feedback before using it externally.",
     };
   } catch {
@@ -188,7 +187,14 @@ Notes: ${application.notes || "None"}
 
     const parsed = extractJson(result.response.text());
     const questions = Array.isArray(parsed?.questions) ? parsed.questions : [];
-    const valid = questions.filter(isGeneratedQuestion).slice(0, 14);
+    const valid = questions
+      .filter(isGeneratedQuestion)
+      .slice(0, 14)
+      .map((question) => ({
+        category: question.category,
+        question: sanitizeText(question.question, { maxLength: 280 }),
+      }))
+      .filter((question) => question.question);
 
     return valid.length ? valid : fallbackQuestions(application);
   } catch {
@@ -207,7 +213,7 @@ export function toInterviewRecords(
     guestId,
     applicationId,
     category: question.category,
-    question: question.question,
+    question: sanitizeText(question.question, { maxLength: 280 }),
     answerNotes: "",
     practiced: false,
     createdAt: timestamp,

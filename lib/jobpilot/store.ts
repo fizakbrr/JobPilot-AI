@@ -36,7 +36,12 @@ function cloneEmptyDatabase(): JobPilotDatabase {
 
 function normalizeDatabase(input: unknown): JobPilotDatabase {
   if (!input || typeof input !== "object") return cloneEmptyDatabase();
-  return { ...cloneEmptyDatabase(), ...(input as Partial<JobPilotDatabase>) };
+  const database = { ...cloneEmptyDatabase(), ...(input as Partial<JobPilotDatabase>) };
+  database.guests = database.guests.map((guest) => ({
+    ...guest,
+    onboardingCompletedAt: guest.onboardingCompletedAt ?? null,
+  }));
+  return database;
 }
 
 async function ensureDatabase() {
@@ -91,10 +96,21 @@ export async function createGuest(name: string) {
     const guest: Guest = {
       id: createId("gst"),
       name,
+      onboardingCompletedAt: null,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
     database.guests.push(guest);
+    return guest;
+  });
+}
+
+export async function completeGuestOnboarding(guestId: string) {
+  return transact((database) => {
+    const guest = database.guests.find((item) => item.id === guestId);
+    if (!guest) return null;
+    guest.onboardingCompletedAt = guest.onboardingCompletedAt ?? nowIso();
+    guest.updatedAt = nowIso();
     return guest;
   });
 }
