@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { APP_CONFIG } from "@/lib/jobpilot/config";
 import "./globals.css";
 
@@ -31,6 +32,7 @@ export default function RootLayout({
         <TooltipProvider>
           {children}
           <Toaster richColors closeButton />
+          <SpeedInsights />
         </TooltipProvider>
       </body>
     </html>
