@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    ".gitignore": "ignore",
+    ".vercelignore": "ignore",
+    "*.ignore": "ignore"
+  }
+}
