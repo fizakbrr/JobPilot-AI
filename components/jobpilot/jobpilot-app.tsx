@@ -1247,7 +1247,6 @@ function DashboardView({
     ["Offer signal", `${data.analytics.offerRate}%`, CheckCircle2, `${data.analytics.rejectedCount} closed rejects`],
   ] as const;
   const maxStatus = Math.max(1, ...APPLICATION_STATUSES.map((status) => data.analytics.byStatus[status]));
-  const readiness = Math.min(100, 42 + Math.min(data.analytics.totalApplications, 8) * 4 + data.analytics.interviewRate);
   const nextFollowUp = upcomingFollowUps[0];
 
   return (
@@ -1373,7 +1372,7 @@ function DashboardView({
           <section className="relative overflow-hidden rounded-[28px] border border-[#17201B] bg-[#17201B] text-[#F7FAF1] shadow-[0_24px_60px_-42px_rgba(15,28,21,0.75)]">
             <SectionHeader title="AI support" icon={<Bot className="size-4 text-[#DDE85F]" />} tone="dark" />
             <div className="relative z-10 flex items-center gap-4 p-3">
-              <ReadinessRing value={readiness} />
+              <QuotaRing quota={quota} />
               <div>
                 <p className="text-[14px] font-semibold">Ready when you need support</p>
                 <p className="mt-1 text-[12px] leading-5 text-[#BFD1C4]">Use {quota.remaining} more AI actions today.</p>
@@ -2345,7 +2344,9 @@ function CompanyMark({ company, className }: { company: string; className?: stri
   );
 }
 
-function ReadinessRing({ value }: { value: number }) {
+function QuotaRing({ quota }: { quota: AiQuota }) {
+  const value = getQuotaProgressValue(quota, "remaining");
+
   return (
     <div className="relative size-16 shrink-0">
       <svg className="size-full -rotate-90" viewBox="0 0 36 36">
@@ -2366,7 +2367,9 @@ function ReadinessRing({ value }: { value: number }) {
           strokeWidth="3"
         />
       </svg>
-      <div className="absolute inset-0 grid place-items-center font-mono text-[14px] font-semibold">{value}%</div>
+      <div className="absolute inset-0 grid place-items-center font-mono text-[13px] font-semibold tabular-nums">
+        {quota.remaining}/{quota.limit}
+      </div>
     </div>
   );
 }
