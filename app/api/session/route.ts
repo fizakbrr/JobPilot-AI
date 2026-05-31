@@ -5,6 +5,7 @@ import { RATE_LIMITS, rateLimit } from "@/lib/jobpilot/rate-limit";
 import { routeErrorResponse, validationErrorResponse } from "@/lib/jobpilot/route-errors";
 import { completeGuestOnboarding, getAiQuota, readDatabase } from "@/lib/jobpilot/store";
 import { guestNameSchema, onboardingSchema } from "@/lib/jobpilot/validators";
+import { getOrCreateVisitorId, visitorSubjectId } from "@/lib/jobpilot/visitor";
 
 export async function GET(request: Request) {
   try {
@@ -13,7 +14,10 @@ export async function GET(request: Request) {
 
     const guest = await getCurrentGuest();
     const database = await readDatabase();
-    const quota = guest ? getAiQuota(database, guest.id) : createAiQuotaSnapshot(getDailyAiActionLimit());
+    const visitorId = guest ? await getOrCreateVisitorId() : null;
+    const quota = visitorId
+      ? getAiQuota(database, visitorSubjectId(visitorId))
+      : createAiQuotaSnapshot(getDailyAiActionLimit());
 
     return NextResponse.json({ guest, quota });
   } catch (error) {
@@ -32,8 +36,9 @@ export async function POST(request: Request) {
     }
 
     const guest = await createOrUpdateGuestSession(parsed.data.name);
+    const visitorId = await getOrCreateVisitorId();
     const database = await readDatabase();
-    const quota = getAiQuota(database, guest.id);
+    const quota = getAiQuota(database, visitorSubjectId(visitorId));
 
     return NextResponse.json({ guest, quota });
   } catch (error) {
@@ -58,7 +63,8 @@ export async function PATCH(request: Request) {
     }
 
     const database = await readDatabase();
-    const quota = getAiQuota(database, updatedGuest.id);
+    const visitorId = await getOrCreateVisitorId();
+    const quota = getAiQuota(database, visitorSubjectId(visitorId));
 
     return NextResponse.json({ guest: updatedGuest, quota });
   } catch (error) {

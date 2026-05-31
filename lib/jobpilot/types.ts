@@ -80,8 +80,11 @@ export type ActivityEvent = {
   createdAt: string;
 };
 
+export type AiUsageScope = "visitor" | "ip" | "guest";
+
 export type AiUsage = {
-  guestId: string;
+  subjectId: string;
+  scope: AiUsageScope;
   date: string;
   count: number;
 };

@@ -6,7 +6,7 @@ This model covers the Next.js app, API routes under `app/api`, local JSON storag
 
 Assumptions:
 - JobPilot is an open demo with no account authentication.
-- A guest cookie scopes one browser session to one local workspace.
+- A guest cookie scopes one browser session to one local workspace, and a separate visitor cookie scopes AI quota.
 - Production uses server-side environment variables for `GEMINI_API_KEY`.
 - Local JSON storage remains the source of truth. There is no SQL database.
 
@@ -27,7 +27,7 @@ Assumptions:
 - `POST /api/ai/resume` sends resume and job text to the server-side AI proxy.
 - `POST /api/ai/interview` generates interview questions.
 - `PATCH /api/interview-questions/[id]` updates question notes and practiced state.
-- `DELETE /api/local-data` clears local JSON data and the guest cookie.
+- `DELETE /api/local-data` clears workspace records and the guest cookie while preserving daily AI usage counters.
 - Resume PDF upload is parsed client-side before text is sent to the API.
 
 ## Trust Boundaries
@@ -44,7 +44,8 @@ Assumptions:
 - Route ids use a strict `prefix_hex` pattern before lookup.
 - AI outputs are sanitized before storage.
 - Application ownership checks require `guestId` matches before update, delete, AI resume linkage, and interview generation.
-- Critical routes use in-memory rate limits by client IP and user agent.
+- Critical routes use in-memory rate limits by client IP, and AI routes also rate limit by a server-issued visitor cookie.
+- Daily AI usage is enforced against both visitor and hashed-IP quota subjects. Workspace reset does not reset these counters.
 - `GEMINI_API_KEY` is read only inside `server-only` code. The client calls internal API routes, not Gemini directly.
 - `.env` files and `data/` are ignored by Git.
 
@@ -53,14 +54,15 @@ Assumptions:
 | Threat | Likelihood | Impact | Priority | Notes |
 | --- | --- | --- | --- | --- |
 | Stored XSS through application notes, resume text, or AI output | Medium | High | High | Sanitization and React escaping reduce risk. Avoid adding `dangerouslySetInnerHTML`. |
-| AI endpoint abuse to consume quota or provider spend | Medium | Medium | Medium | Daily guest quota and per-IP rate limits reduce abuse. Multi-instance deployments need a shared limiter. |
+| AI endpoint abuse to consume quota or provider spend | Medium | Medium | Medium | Daily visitor and hashed-IP quotas reduce casual bypasses from clearing guest data or changing browser sessions. VPN/proxy rotation and multi-instance deployments need stronger controls. |
 | Cross-guest record modification by guessing ids | Low | Medium | Medium | Id validation and `guestId` ownership checks protect application and question routes. |
 | Destructive local data reset abuse | Low | High | Medium | The reset route is rate limited. For shared public hosting, add an admin gate or remove the endpoint. |
 | Secret exposure through client bundle | Low | High | Medium | Gemini access stays in `server-only` modules and `.env` remains ignored. |
 
 ## Follow-Up Controls
 
-- Replace in-memory rate limits with a shared store before running multiple server instances.
+- Replace in-memory rate limits and local JSON quota storage with a shared durable store before running multiple server instances.
+- Add CAPTCHA, account verification, payment gates, or provider-side budget limits if the public demo must resist VPN/proxy rotation.
 - Add CSRF protection if the app becomes reachable beyond a same-site demo context.
 - Add structured audit logs for destructive actions if multiple people operate the same deployment.
 - Keep `npm audit` clean during dependency updates.

@@ -1,15 +1,20 @@
 import { NextResponse } from "next/server";
 import { generateInterviewQuestionsWithAI, toInterviewRecords } from "@/lib/jobpilot/ai";
 import { requireGuest } from "@/lib/jobpilot/guest";
-import { RATE_LIMITS, rateLimit } from "@/lib/jobpilot/rate-limit";
+import { RATE_LIMITS, rateLimit, rateLimitByKey } from "@/lib/jobpilot/rate-limit";
 import { routeErrorResponse, validationErrorResponse } from "@/lib/jobpilot/route-errors";
-import { addActivity, consumeAiQuota, getAiQuota, transact } from "@/lib/jobpilot/store";
+import { addActivity, consumeAiQuotaForSubjects, getAiQuota, transact } from "@/lib/jobpilot/store";
 import { interviewGenerateSchema } from "@/lib/jobpilot/validators";
+import { buildAiQuotaSubjects, getOrCreateVisitorId, visitorSubjectId } from "@/lib/jobpilot/visitor";
 
 export async function POST(request: Request) {
   try {
     const limited = rateLimit(request, RATE_LIMITS.ai);
     if (limited) return limited;
+
+    const visitorId = await getOrCreateVisitorId();
+    const visitorLimited = rateLimitByKey(`visitor:${visitorId}`, RATE_LIMITS.ai);
+    if (visitorLimited) return visitorLimited;
 
     const guest = await requireGuest();
     const parsed = interviewGenerateSchema.safeParse(await request.json());
@@ -17,12 +22,19 @@ export async function POST(request: Request) {
       return validationErrorResponse(parsed.error.issues[0]?.message ?? "Invalid interview request.");
     }
 
+    const quotaSubjects = buildAiQuotaSubjects(request, visitorId);
     const quotaCheck = await transact((database) => {
       const application = database.applications.find(
         (item) => item.id === parsed.data.applicationId && item.guestId === guest.id,
       );
-      if (!application) return { allowed: false as const, missingApplication: true as const, quota: getAiQuota(database, guest.id) };
-      return { ...consumeAiQuota(database, guest.id), application };
+      if (!application) {
+        return {
+          allowed: false as const,
+          missingApplication: true as const,
+          quota: getAiQuota(database, visitorSubjectId(visitorId)),
+        };
+      }
+      return { ...consumeAiQuotaForSubjects(database, quotaSubjects), application };
     });
 
     if ("missingApplication" in quotaCheck) {

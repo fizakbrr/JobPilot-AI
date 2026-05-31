@@ -1,6 +1,6 @@
 # Project Structure
 
-JobPilot keeps framework routes, product code, design references, and generated files in separate places.
+JobPilot keeps framework routes, product code, assets, and generated files in separate places.
 
 ## App Routes
 
@@ -21,13 +21,13 @@ JobPilot keeps framework routes, product code, design references, and generated 
   - `store.ts` for local JSON storage, IDs, analytics, and AI quota handling.
   - `types.ts` for shared product types.
   - `validators.ts` for API input schemas.
+  - `visitor.ts` for server-issued visitor identity and AI abuse quota subjects.
 - `lib/utils.ts` stays at the top level because shadcn/ui components import it directly.
 
 ## Brand And Design Assets
 
 - `public/brand/` stores canonical brand assets served by Next.js.
-- `.stitch/` stores Google Stitch design references, prompts, and exported screen artifacts. Raw API responses are ignored by git.
-- `docs/DEPLOYMENT.md`, `docs/RELEASE_AUDIT.md`, and `docs/SECURITY_THREAT_MODEL.md` document public-release operations and risk controls.
+- `docs/SECURITY_THREAT_MODEL.md` documents public-release risk controls.
 
 ## Local Generated Files
 

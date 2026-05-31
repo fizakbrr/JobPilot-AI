@@ -7,6 +7,7 @@ import { createAiQuotaSnapshot, getDailyAiActionLimit } from "@/lib/jobpilot/con
 import {
   APPLICATION_STATUSES,
   type ActivityEvent,
+  type AiUsage,
   type AiQuota,
   type Application,
   type ApplicationStatus,
@@ -30,8 +31,43 @@ const emptyDatabase: JobPilotDatabase = {
   aiUsage: [],
 };
 
+type LegacyAiUsage = Partial<AiUsage> & {
+  guestId?: string;
+};
+
 function cloneEmptyDatabase(): JobPilotDatabase {
   return JSON.parse(JSON.stringify(emptyDatabase)) as JobPilotDatabase;
+}
+
+function aiUsageScope(subjectId: string): AiUsage["scope"] {
+  if (subjectId.startsWith("ip:")) return "ip";
+  if (subjectId.startsWith("guest:")) return "guest";
+  return "visitor";
+}
+
+function normalizeAiUsage(input: unknown): AiUsage[] {
+  if (!Array.isArray(input)) return [];
+
+  return input
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+
+      const record = item as LegacyAiUsage;
+      const legacyGuestId = typeof record.guestId === "string" ? record.guestId : "";
+      const subjectId = typeof record.subjectId === "string" ? record.subjectId : legacyGuestId ? `guest:${legacyGuestId}` : "";
+      const date = typeof record.date === "string" ? record.date : "";
+      const count = Number(record.count ?? 0);
+
+      if (!subjectId || !date || !Number.isFinite(count)) return null;
+
+      return {
+        subjectId,
+        scope: record.scope ?? aiUsageScope(subjectId),
+        date,
+        count: Math.max(0, Math.floor(count)),
+      };
+    })
+    .filter((item): item is AiUsage => Boolean(item));
 }
 
 function normalizeDatabase(input: unknown): JobPilotDatabase {
@@ -41,6 +77,7 @@ function normalizeDatabase(input: unknown): JobPilotDatabase {
     ...guest,
     onboardingCompletedAt: guest.onboardingCompletedAt ?? null,
   }));
+  database.aiUsage = normalizeAiUsage((input as Partial<JobPilotDatabase>).aiUsage);
   return database;
 }
 
@@ -65,16 +102,29 @@ export async function writeDatabase(database: JobPilotDatabase) {
   await fs.writeFile(dataPath, JSON.stringify(normalizeDatabase(database), null, 2), "utf8");
 }
 
-export async function resetDatabase() {
-  await ensureDatabase();
-  await fs.writeFile(dataPath, JSON.stringify(cloneEmptyDatabase(), null, 2), "utf8");
+export async function resetDatabase(options: { preserveAiUsage?: boolean } = {}) {
+  const nextDatabase = cloneEmptyDatabase();
+
+  if (options.preserveAiUsage !== false) {
+    const currentDatabase = await readDatabase();
+    nextDatabase.aiUsage = currentDatabase.aiUsage;
+  }
+
+  await writeDatabase(nextDatabase);
 }
 
+let transactionQueue: Promise<unknown> = Promise.resolve();
+
 export async function transact<T>(callback: (database: JobPilotDatabase) => T | Promise<T>) {
-  const database = await readDatabase();
-  const result = await callback(database);
-  await writeDatabase(database);
-  return result;
+  const queuedTransaction = transactionQueue.then(async () => {
+    const database = await readDatabase();
+    const result = await callback(database);
+    await writeDatabase(database);
+    return result;
+  });
+
+  transactionQueue = queuedTransaction.catch(() => undefined);
+  return queuedTransaction;
 }
 
 export function nowIso() {
@@ -212,25 +262,63 @@ export function todayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function getAiQuota(database: JobPilotDatabase, guestId: string): AiQuota {
+export function getAiQuota(database: JobPilotDatabase, subjectId: string, limit = getDailyAiActionLimit()): AiQuota {
   const date = todayKey();
-  const usage = database.aiUsage.find((item) => item.guestId === guestId && item.date === date);
+  const usage = database.aiUsage.find((item) => item.subjectId === subjectId && item.date === date);
   const used = usage?.count ?? 0;
-  return createAiQuotaSnapshot(getDailyAiActionLimit(), used, date);
+  return createAiQuotaSnapshot(limit, used, date);
 }
 
-export function consumeAiQuota(database: JobPilotDatabase, guestId: string) {
-  const quota = getAiQuota(database, guestId);
-  if (quota.remaining <= 0) return { allowed: false, quota };
-
-  let usage = database.aiUsage.find((item) => item.guestId === guestId && item.date === quota.date);
+function incrementAiUsage(database: JobPilotDatabase, subjectId: string, date: string) {
+  let usage = database.aiUsage.find((item) => item.subjectId === subjectId && item.date === date);
   if (!usage) {
-    usage = { guestId, date: quota.date, count: 0 };
+    usage = { subjectId, scope: aiUsageScope(subjectId), date, count: 0 };
     database.aiUsage.push(usage);
   }
   usage.count += 1;
+}
 
-  return { allowed: true, quota: getAiQuota(database, guestId) };
+export function consumeAiQuota(database: JobPilotDatabase, subjectId: string, limit = getDailyAiActionLimit()) {
+  const quota = getAiQuota(database, subjectId, limit);
+  if (quota.remaining <= 0) return { allowed: false, quota };
+
+  incrementAiUsage(database, subjectId, quota.date);
+
+  return { allowed: true, quota: getAiQuota(database, subjectId, limit) };
+}
+
+export function consumeAiQuotaForSubjects(
+  database: JobPilotDatabase,
+  subjects: { subjectId: string; limit: number }[],
+) {
+  const [primarySubject] = subjects;
+  if (!primarySubject) {
+    return { allowed: false as const, quota: createAiQuotaSnapshot(getDailyAiActionLimit()) };
+  }
+
+  const quotas = subjects.map((subject) => ({
+    ...subject,
+    quota: getAiQuota(database, subject.subjectId, subject.limit),
+  }));
+  const blockedQuota = quotas.find((item) => item.quota.remaining <= 0);
+  const primaryQuota = quotas[0].quota;
+
+  if (blockedQuota) {
+    return {
+      allowed: false as const,
+      quota: createAiQuotaSnapshot(primaryQuota.limit, primaryQuota.limit, primaryQuota.date),
+      blockedBy: blockedQuota.subjectId,
+    };
+  }
+
+  for (const subject of subjects) {
+    incrementAiUsage(database, subject.subjectId, todayKey());
+  }
+
+  return {
+    allowed: true as const,
+    quota: getAiQuota(database, primarySubject.subjectId, primarySubject.limit),
+  };
 }
 
 export type ApplicationDetailBundle = {

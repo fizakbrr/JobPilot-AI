@@ -9,10 +9,17 @@ export const APP_CONFIG = {
 } as const;
 
 export const DEFAULT_DAILY_AI_ACTION_LIMIT = 3;
+export const DEFAULT_DAILY_AI_IP_LIMIT = DEFAULT_DAILY_AI_ACTION_LIMIT;
 
 export function getDailyAiActionLimit() {
   const configuredLimit = Number(process.env.JOBPILOT_DAILY_AI_ACTION_LIMIT ?? DEFAULT_DAILY_AI_ACTION_LIMIT);
   if (!Number.isFinite(configuredLimit) || configuredLimit < 1) return DEFAULT_DAILY_AI_ACTION_LIMIT;
+  return Math.floor(configuredLimit);
+}
+
+export function getDailyAiIpLimit() {
+  const configuredLimit = Number(process.env.JOBPILOT_DAILY_AI_IP_LIMIT ?? DEFAULT_DAILY_AI_IP_LIMIT);
+  if (!Number.isFinite(configuredLimit) || configuredLimit < 1) return DEFAULT_DAILY_AI_IP_LIMIT;
   return Math.floor(configuredLimit);
 }
 

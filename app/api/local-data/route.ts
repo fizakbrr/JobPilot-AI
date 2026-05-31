@@ -9,7 +9,7 @@ export async function DELETE(request: Request) {
     const limited = rateLimit(request, RATE_LIMITS.destructive);
     if (limited) return limited;
 
-    await resetDatabase();
+    await resetDatabase({ preserveAiUsage: true });
     await clearGuestSession();
 
     return NextResponse.json({ ok: true });

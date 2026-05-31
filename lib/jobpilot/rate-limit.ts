@@ -23,12 +23,13 @@ export const RATE_LIMITS = {
   destructive: { name: "destructive", limit: 8, windowMs: 60_000 },
 } as const satisfies Record<string, RateLimitPolicy>;
 
-function clientKey(request: Request) {
+export function getClientIp(request: Request) {
+  const vercelIp = request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim();
   const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   const realIp = request.headers.get("x-real-ip")?.trim();
-  const ip = forwardedFor || realIp || "local";
-  const userAgent = request.headers.get("user-agent")?.slice(0, 80) || "unknown";
-  return `${ip}:${userAgent}`;
+  const cfIp = request.headers.get("cf-connecting-ip")?.trim();
+
+  return vercelIp || cfIp || realIp || forwardedFor || "local";
 }
 
 function pruneExpired(now: number) {
@@ -38,11 +39,11 @@ function pruneExpired(now: number) {
   }
 }
 
-export function rateLimit(request: Request, policy: RateLimitPolicy) {
+export function rateLimitByKey(subjectKey: string, policy: RateLimitPolicy) {
   const now = Date.now();
   pruneExpired(now);
 
-  const key = `${policy.name}:${clientKey(request)}`;
+  const key = `${policy.name}:${subjectKey}`;
   const current = buckets.get(key);
   const bucket = current && current.resetAt > now ? current : { count: 0, resetAt: now + policy.windowMs };
   bucket.count += 1;
@@ -64,4 +65,8 @@ export function rateLimit(request: Request, policy: RateLimitPolicy) {
   }
 
   return null;
+}
+
+export function rateLimit(request: Request, policy: RateLimitPolicy) {
+  return rateLimitByKey(`ip:${getClientIp(request)}`, policy);
 }

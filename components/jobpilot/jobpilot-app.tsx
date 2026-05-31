@@ -192,7 +192,7 @@ const onboardingSteps = [
   {
     view: "settings",
     title: "Keep the workspace under your control.",
-    body: "Settings holds your display name, AI quota, and local data controls. You can clear the workspace whenever you need a clean start.",
+    body: "Settings holds your display name, AI quota, and workspace controls. You can clear application data whenever you need a clean start.",
     outcome: "No account is required, and your local data remains visible to you.",
   },
 ] as const satisfies ReadonlyArray<{ view: View; title: string; body: string; outcome: string }>;
@@ -597,7 +597,7 @@ export function JobPilotApp() {
       setAddSheetOpen(false);
       setMobileNavOpen(false);
       setShowWorkspace(false);
-      toast.success("Local data cleared.");
+      toast.success("Workspace cleared.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not clear local data.");
     } finally {
@@ -2195,7 +2195,7 @@ function SettingsView({
   startOnboarding: () => void;
 }) {
   return (
-    <div className="grid max-w-5xl gap-5">
+    <div className="grid w-full gap-5">
       <section className="relative overflow-hidden rounded-[30px] bg-[#17201B] p-5 text-[#F7FAF1] shadow-[0_28px_80px_-54px_rgba(7,24,14,0.9)]">
         <div className="relative">
           <div className="mb-4 flex h-12 w-40 items-center">
@@ -2205,7 +2205,7 @@ function SettingsView({
             Workspace settings without account friction.
           </h1>
           <p className="mt-4 max-w-xl text-[14px] leading-6 text-[#BFD1C4]">
-            JobPilot stays open. Your browser gets a name, and AI usage stays capped so the public demo remains usable.
+            JobPilot stays open. Your browser gets a name, and AI usage stays capped by browser and network so the public demo remains usable.
           </p>
         </div>
       </section>
@@ -2242,7 +2242,7 @@ function SettingsView({
             </div>
             <Progress value={getQuotaProgressValue(quota)} className="mt-5 h-2 rounded-full" />
             <p className="mt-4 rounded-2xl border border-[#D8E3D4] bg-[#F4F8EF] p-3 text-[13px] leading-6 text-[#53675A]">
-              AI actions are limited to {quota.limit} per day for each guest workspace. Tracking, notes, and manual edits keep working after the limit.
+              AI actions are limited to {quota.limit} per day for this browser. Tracking, notes, and manual edits keep working after the limit.
             </p>
           </div>
         </section>
@@ -2253,7 +2253,7 @@ function SettingsView({
           <div>
             <p className="text-[15px] font-semibold tracking-[-0.02em] text-[#17201B]">Clear this workspace</p>
             <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[#68413F]">
-              Deletes every guest, application, resume analysis, interview note, activity entry, and AI usage counter from the local JSON file.
+              Deletes applications, resume analyses, interview notes, activity entries, and the current guest name from the local JSON file. Daily AI usage records are retained for abuse prevention.
             </p>
           </div>
           <Dialog>
@@ -2263,7 +2263,7 @@ function SettingsView({
                 className="h-11 rounded-2xl border-[#B94A48]/35 bg-white/70 px-4 font-mono text-[12px] text-[#93000A] hover:bg-white hover:text-[#93000A] active:scale-[0.98]"
               >
                 <Trash2 className="size-4" />
-                Clear all data
+                Clear workspace
               </Button>
             </DialogTrigger>
             <DialogContent className="rounded-3xl border-[#E3AAA8] bg-[#FFF9F7] shadow-[0_32px_80px_-42px_rgba(80,20,18,0.6)]">
@@ -2271,9 +2271,9 @@ function SettingsView({
                 <div className="mb-1 grid size-11 place-items-center rounded-2xl bg-[#FFF4F2] text-[#B94A48]">
                   <AlertTriangle className="size-5" />
                 </div>
-                <DialogTitle className="tracking-[-0.04em]">Clear all local data?</DialogTitle>
+                <DialogTitle className="tracking-[-0.04em]">Clear workspace data?</DialogTitle>
                 <DialogDescription className="text-[#68413F]">
-                  This removes the JSON workspace and signs out the current browser session. The action cannot be undone.
+                  This removes workspace records and signs out the current browser session. Daily AI quota records are retained for abuse prevention.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
@@ -2290,7 +2290,7 @@ function SettingsView({
                   disabled={clearingData}
                   className="h-11 rounded-2xl bg-[#B94A48] px-4 font-mono text-[12px] text-white hover:bg-[#9F3836] active:scale-[0.98]"
                 >
-                  {clearingData ? "Clearing" : "Clear all data"}
+                  {clearingData ? "Clearing" : "Clear workspace"}
                 </Button>
               </DialogFooter>
             </DialogContent>
