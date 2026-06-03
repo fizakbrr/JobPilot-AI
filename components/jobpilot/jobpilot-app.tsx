@@ -17,6 +17,8 @@ import {
   FileSearch,
   FileText,
   Filter,
+  GitBranch,
+  Globe2,
   LayoutDashboard,
   ListChecks,
   Loader2,
@@ -886,6 +888,12 @@ const howItWorks = [
   ["Use AI when it helps", "Run resume checks or interview questions only when you need support."],
 ] as const;
 
+const footerSocialLinks = [
+  { label: "GitHub", href: "https://github.com/fizakbrr", icon: GitBranch },
+  { label: "LinkedIn", href: "https://www.linkedin.com/in/fizakbrr", icon: BriefcaseBusiness },
+  { label: "Portfolio", href: "https://fizportfolio.vercel.app/", icon: Globe2 },
+] as const;
+
 function OnboardingWalkthrough({
   open,
   step,
@@ -1275,6 +1283,51 @@ function LandingPage({ onStart }: { onStart: () => void }) {
           </div>
         </section>
       </main>
+
+      <footer className="border-t border-[#DDD3C1] bg-[#EEE8DC] px-4 py-10 md:px-7" aria-labelledby="site-footer-title">
+        <div className="mx-auto grid max-w-375 gap-8 md:grid-cols-[1fr_1.1fr_0.9fr] md:items-start">
+          <div>
+            <p id="site-footer-title" className="text-[18px] font-semibold text-[#17201B]">
+              {APP_CONFIG.name}
+            </p>
+            <p className="mt-3 max-w-sm text-[13px] leading-6 text-pretty text-[#62675F]">
+              A focused public demo for organizing applications, resumes, interviews, and follow-ups.
+            </p>
+          </div>
+
+          <section id="terms" aria-labelledby="footer-terms-title" className="border border-[#D4C8B5] bg-[#FBF8F0] p-4 shadow-[0_18px_46px_-40px_rgba(15,28,21,0.55)]">
+            <h2 id="footer-terms-title" className="font-mono text-[11px] uppercase tracking-[0.16em] text-[#62675F]">
+              Terms & Conditions
+            </h2>
+            <p className="mt-3 text-[13px] leading-6 text-pretty text-[#62675F]">
+              This demo is provided as-is for portfolio and evaluation use. AI suggestions are guidance only; review content before using it in applications.
+            </p>
+          </section>
+
+          <nav aria-label="Social media" className="flex flex-col gap-2">
+            <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[#62675F]">Social</p>
+            <div className="mt-1 grid gap-2">
+              {footerSocialLinks.map(({ label, href, icon: Icon }) => (
+                <a
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex min-h-11 items-center justify-between gap-3 border border-[#D4C8B5] bg-[#FBF8F0] px-3 py-2 text-[13px] font-medium text-[#17201B] shadow-[0_14px_34px_-32px_rgba(15,28,21,0.55)] transition-[background-color,box-shadow,transform] hover:bg-[#F6F2E8] hover:shadow-[0_18px_44px_-34px_rgba(15,28,21,0.68)] active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#2F6B4F]"
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="grid size-8 place-items-center bg-[#ECE4D3] text-[#17201B]">
+                      <Icon className="size-4" strokeWidth={1.7} />
+                    </span>
+                    {label}
+                  </span>
+                  <ArrowUpRight className="size-4 text-[#87927E] transition-[color,transform] group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[#2F6B4F]" strokeWidth={1.7} />
+                </a>
+              ))}
+            </div>
+          </nav>
+        </div>
+      </footer>
     </div>
   );
 }
