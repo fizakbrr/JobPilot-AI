@@ -27,7 +27,7 @@ Assumptions:
 - `POST /api/ai/resume` sends resume and job text to the server-side AI proxy.
 - `POST /api/ai/interview` generates interview questions.
 - `PATCH /api/interview-questions/[id]` updates question notes and practiced state.
-- `DELETE /api/local-data` clears workspace records and the guest cookie while preserving daily AI usage counters.
+- `DELETE /api/local-data` clears the current guest workspace and guest cookie while preserving daily AI usage counters.
 - Resume PDF upload is parsed client-side before text is sent to the API.
 
 ## Trust Boundaries
@@ -56,7 +56,7 @@ Assumptions:
 | Stored XSS through application notes, resume text, or AI output | Medium | High | High | Sanitization and React escaping reduce risk. Avoid adding `dangerouslySetInnerHTML`. |
 | AI endpoint abuse to consume quota or provider spend | Medium | Medium | Medium | Daily visitor and hashed-IP quotas reduce casual bypasses from clearing guest data or changing browser sessions. VPN/proxy rotation and multi-instance deployments need stronger controls. |
 | Cross-guest record modification by guessing ids | Low | Medium | Medium | Id validation and `guestId` ownership checks protect application and question routes. |
-| Destructive local data reset abuse | Low | High | Medium | The reset route is rate limited. For shared public hosting, add an admin gate or remove the endpoint. |
+| Destructive local data reset abuse | Low | Medium | Medium | The reset route requires a guest session and only clears that guest's records. Keep rate limits and consider an admin gate for any future global reset route. |
 | Secret exposure through client bundle | Low | High | Medium | Gemini access stays in `server-only` modules and `.env` remains ignored. |
 
 ## Follow-Up Controls

@@ -1,21 +1,19 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   AlertTriangle,
   ArrowRight,
   ArrowUpRight,
   BarChart3,
-  Bell,
   Bot,
   BriefcaseBusiness,
   CheckCircle2,
   ClipboardList,
   Compass,
   FileText,
-  HelpCircle,
   LayoutDashboard,
   Loader2,
   Menu,
@@ -319,6 +317,10 @@ export function JobPilotApp() {
 
   const selectedApplication =
     data.applications.find((application) => application.id === selectedApplicationId) ?? data.applications[0] ?? null;
+  const selectedApplicationAnalysis =
+    data.analyses.find((analysis) => analysis.applicationId === (selectedApplication?.id ?? null)) ?? null;
+  const visibleAnalysis =
+    activeAnalysis?.applicationId === (selectedApplication?.id ?? null) ? activeAnalysis : selectedApplicationAnalysis;
 
   const sources = useMemo(
     () => Array.from(new Set(data.applications.map((application) => application.sourcePlatform).filter(Boolean))),
@@ -555,14 +557,17 @@ export function JobPilotApp() {
 
   async function updateQuestion(id: string, patch: Partial<InterviewQuestion>) {
     try {
-      await readJson<{ question: InterviewQuestion }>(
+      const payload = await readJson<{ question: InterviewQuestion }>(
         await fetch(`/api/interview-questions/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(patch),
         }),
       );
-      await refreshData();
+      setData((current) => ({
+        ...current,
+        questions: current.questions.map((question) => (question.id === id ? payload.question : question)),
+      }));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not update question.");
     }
@@ -684,7 +689,7 @@ export function JobPilotApp() {
             <Button
               onClick={saveName}
               disabled={busyAction === "name" || !name.trim()}
-              className="h-11 rounded-xl bg-[#1B7A4E] font-mono text-[12px] shadow-[0_16px_28px_-18px_rgba(27,122,78,0.9)] hover:bg-[#155F3D] active:scale-[0.98]"
+              className="h-11 rounded-xl bg-[#1B7A4E] font-mono text-[12px] shadow-[0_16px_28px_-18px_rgba(27,122,78,0.9)] hover:bg-[#155F3D] active:scale-[0.96]"
             >
               {busyAction === "name" ? "Preparing workspace" : "Enter workspace"}
             </Button>
@@ -711,6 +716,7 @@ export function JobPilotApp() {
           <TopBar
             guest={guest}
             quota={normalizedQuota}
+            view={view}
             search={search}
             setSearch={setSearch}
             mobileNavOpen={mobileNavOpen}
@@ -765,7 +771,7 @@ export function JobPilotApp() {
                     setJobDescription={setJobDescription}
                     analyzeResume={analyzeResume}
                     busy={busyAction === "resume"}
-                    analysis={activeAnalysis ?? data.analyses[0] ?? null}
+                    analysis={visibleAnalysis}
                     quota={normalizedQuota}
                     importResumePdf={importResumePdf}
                     resumeFileName={resumeFileName}
@@ -924,7 +930,7 @@ function OnboardingWalkthrough({
                 <Button
                   onClick={isLast ? onFinish : onNext}
                   disabled={busy}
-                  className="h-11 rounded-2xl bg-[#17201B] px-4 font-mono text-[12px] text-[#F7FAF1] hover:bg-[#2A4033] active:scale-[0.98]"
+                  className="h-11 rounded-2xl bg-[#17201B] px-4 font-mono text-[12px] text-[#F7FAF1] hover:bg-[#2A4033] active:scale-[0.96]"
                 >
                   {busy ? "Saving" : isLast ? "Finish walkthrough" : "Continue"}
                   {!isLast ? <ArrowRight className="size-4" /> : null}
@@ -1133,7 +1139,7 @@ function Navigation({
         </div>
         <Button
           onClick={onAdd}
-          className="relative mt-5 h-11 w-full rounded-2xl bg-[#DDE85F] font-mono text-[12px] text-[#17201B] shadow-[0_18px_42px_-26px_rgba(221,232,95,0.85)] hover:bg-[#E9F277] active:scale-[0.98]"
+          className="relative mt-5 h-11 w-full rounded-2xl bg-[#DDE85F] font-mono text-[12px] text-[#17201B] shadow-[0_18px_42px_-26px_rgba(221,232,95,0.85)] hover:bg-[#E9F277] active:scale-[0.96]"
         >
           <Plus className="size-4" />
           Add application
@@ -1145,7 +1151,7 @@ function Navigation({
             key={id}
             variant="ghost"
             className={cn(
-              "mx-3 h-11 w-[calc(100%-1.5rem)] justify-start gap-3 rounded-2xl px-3 text-[14px] font-medium text-[#A9B8AE] transition-[background-color,color,transform] duration-200 hover:bg-white/8 hover:text-[#F7FAF1] active:scale-[0.98]",
+              "mx-3 h-11 w-[calc(100%-1.5rem)] justify-start gap-3 rounded-2xl px-3 text-[14px] font-medium text-[#A9B8AE] transition-[background-color,color,transform] duration-200 hover:bg-white/8 hover:text-[#F7FAF1] active:scale-[0.96]",
               view === id &&
                 "bg-[#F7FAF1] font-semibold text-[#17201B] shadow-[0_18px_44px_-34px_rgba(0,0,0,0.85)] hover:bg-[#F7FAF1] hover:text-[#17201B]",
             )}
@@ -1173,6 +1179,7 @@ function Navigation({
 function TopBar({
   guest,
   quota,
+  view,
   search,
   setSearch,
   mobileNavOpen,
@@ -1180,30 +1187,45 @@ function TopBar({
 }: {
   guest: Guest | null;
   quota: AiQuota;
+  view: View;
   search: string;
   setSearch: (value: string) => void;
   mobileNavOpen: boolean;
   setMobileNavOpen: (open: boolean) => void;
 }) {
+  const searchId = useId();
+
   return (
     <header className="sticky top-0 z-40 border-b border-[#DDE6D7] bg-[#EEF3EA]/88 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-375 items-center gap-4 px-4 md:px-7">
-        <Button variant="ghost" size="icon" className="size-10 rounded-xl lg:hidden" onClick={() => setMobileNavOpen(!mobileNavOpen)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"}
+          className="size-10 rounded-xl active:scale-[0.96] lg:hidden"
+          onClick={() => setMobileNavOpen(!mobileNavOpen)}
+        >
           <Menu className="size-5" />
         </Button>
         <div className="hidden h-10 w-40 items-center md:flex">
           <Image src="/brand/logo-complete.svg" alt={APP_CONFIG.name} width={154} height={50} className="h-auto w-full" />
         </div>
-        <div className="hidden h-11 w-full max-w-md items-center rounded-2xl border border-[#DDE6D7] bg-white/82 px-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] md:flex">
-          <Search className="mr-2 size-4 text-[#53675A]" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search applications..."
-            className="h-9 border-0 bg-transparent px-0 text-[13px] shadow-none focus-visible:ring-0"
-          />
-          <span className="rounded-lg border border-[#DDE6D7] bg-[#F4F8EF] px-1.5 font-mono text-[11px] text-[#53675A]">/</span>
-        </div>
+        {view === "applications" ? (
+          <label
+            htmlFor={searchId}
+            className="hidden h-11 w-full max-w-md items-center rounded-2xl border border-[#DDE6D7] bg-white/82 px-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] md:flex"
+          >
+            <Search className="mr-2 size-4 text-[#53675A]" />
+            <span className="sr-only">Search applications</span>
+            <Input
+              id={searchId}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search applications..."
+              className="h-9 border-0 bg-transparent px-0 text-[13px] shadow-none focus-visible:ring-0"
+            />
+          </label>
+        ) : null}
         <div className="min-w-0 flex-1 md:hidden">
           <p className="truncate text-[14px] font-medium">Good to see you{guest ? `, ${guest.name}` : ""}</p>
         </div>
@@ -1211,12 +1233,6 @@ function TopBar({
           <p className="hidden font-mono text-[11px] text-[#53675A] tabular-nums md:block">
             AI quota {quota.remaining}/{quota.limit}
           </p>
-          <Button variant="ghost" size="icon" className="hidden size-10 rounded-xl text-[#53675A] hover:bg-white/70 md:inline-flex">
-            <Bell className="size-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="hidden size-10 rounded-xl text-[#53675A] hover:bg-white/70 md:inline-flex">
-            <HelpCircle className="size-4" />
-          </Button>
           <div className="grid size-10 place-items-center rounded-2xl border border-[#DDE6D7] bg-[#17201B] font-mono text-[11px] font-semibold text-[#F7FAF1] shadow-[0_16px_30px_-22px_rgba(15,28,21,0.8)]">
             {guest ? initials(guest.name) || "JP" : "JP"}
           </div>
@@ -1270,14 +1286,14 @@ function DashboardView({
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <Button
                 onClick={onAdd}
-                className="h-12 rounded-2xl bg-[#DDE85F] px-5 font-mono text-[12px] text-[#17201B] shadow-[0_18px_42px_-26px_rgba(221,232,95,0.85)] hover:bg-[#E9F277] active:scale-[0.98]"
+                className="h-12 rounded-2xl bg-[#DDE85F] px-5 font-mono text-[12px] text-[#17201B] shadow-[0_18px_42px_-26px_rgba(221,232,95,0.85)] hover:bg-[#E9F277] active:scale-[0.96]"
               >
                 <Plus className="size-4" />
                 Add application
               </Button>
               <Button
                 variant="outline"
-                className="h-12 rounded-2xl border-white/15 bg-white/8 px-5 font-mono text-[12px] text-[#F7FAF1] hover:bg-white/14 hover:text-[#F7FAF1] active:scale-[0.98]"
+                className="h-12 rounded-2xl border-white/15 bg-white/8 px-5 font-mono text-[12px] text-[#F7FAF1] hover:bg-white/14 hover:text-[#F7FAF1] active:scale-[0.96]"
                 onClick={() => setView("resume")}
               >
                 Run resume scan
@@ -1381,7 +1397,7 @@ function DashboardView({
             <div className="relative z-10 p-3 pt-0">
               <Button
                 variant="outline"
-                className="h-10 w-full rounded-2xl border-white/12 bg-white/8 font-mono text-[12px] text-[#F7FAF1] hover:bg-white/14 hover:text-[#F7FAF1] active:scale-[0.98]"
+                className="h-10 w-full rounded-2xl border-white/12 bg-white/8 font-mono text-[12px] text-[#F7FAF1] hover:bg-white/14 hover:text-[#F7FAF1] active:scale-[0.96]"
                 onClick={() => setView("resume")}
               >
                 Scan resume
@@ -1453,7 +1469,7 @@ function ApplicationsView({
   errors: ApplicationFormErrors;
   formError: string | null;
   createApplication: () => void;
-  updateApplication: (id: string, patch: Partial<Application>) => void;
+  updateApplication: (id: string, patch: Partial<Application>) => Promise<void> | void;
   deleteApplication: (id: string) => void;
   busyAction: string | null;
   addSheetOpen: boolean;
@@ -1474,7 +1490,7 @@ function ApplicationsView({
           </div>
           <div className="flex flex-col gap-2 sm:flex-row xl:items-center">
             <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as ApplicationStatus | "All")}>
-              <SelectTrigger className="h-11 rounded-2xl border-[#D8E3D4] bg-white/88 text-[13px] shadow-[0_14px_30px_-26px_rgba(15,28,21,0.55)] sm:w-48">
+              <SelectTrigger aria-label="Filter by application status" className="h-11 rounded-2xl border-[#D8E3D4] bg-white/88 text-[13px] shadow-[0_14px_30px_-26px_rgba(15,28,21,0.55)] sm:w-48">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1487,7 +1503,7 @@ function ApplicationsView({
               </SelectContent>
             </Select>
             <Select value={sourceFilter} onValueChange={setSourceFilter}>
-              <SelectTrigger className="h-11 rounded-2xl border-[#D8E3D4] bg-white/88 text-[13px] shadow-[0_14px_30px_-26px_rgba(15,28,21,0.55)] sm:w-44">
+              <SelectTrigger aria-label="Filter by application source" className="h-11 rounded-2xl border-[#D8E3D4] bg-white/88 text-[13px] shadow-[0_14px_30px_-26px_rgba(15,28,21,0.55)] sm:w-44">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1501,7 +1517,7 @@ function ApplicationsView({
             </Select>
             <Sheet open={addSheetOpen} onOpenChange={setAddSheetOpen}>
               <SheetTrigger asChild>
-                <Button className="h-11 rounded-2xl bg-[#17201B] px-4 font-mono text-[12px] text-[#F7FAF1] shadow-[0_18px_42px_-30px_rgba(15,28,21,0.9)] hover:bg-[#2A4033] active:scale-[0.98]">
+                <Button className="h-11 rounded-2xl bg-[#17201B] px-4 font-mono text-[12px] text-[#F7FAF1] shadow-[0_18px_42px_-30px_rgba(15,28,21,0.9)] hover:bg-[#2A4033] active:scale-[0.96]">
                   <Plus className="size-4" />
                   Add application
                 </Button>
@@ -1569,6 +1585,7 @@ function ApplicationsView({
             <Button
               variant="outline"
               size="icon"
+              aria-label="Add application"
               className="size-10 rounded-2xl border-dashed border-[#91A99A] bg-white/70 text-[#53675A] hover:bg-white"
               onClick={() => setAddSheetOpen(true)}
             >
@@ -1598,6 +1615,9 @@ function ApplicationForm({
   busy: boolean;
 }) {
   const update = (key: keyof ApplicationFormState, value: string) => setForm({ ...form, [key]: value });
+  const statusId = useId();
+  const notesId = useId();
+  const notesErrorId = useId();
 
   return (
     <div className="grid gap-5 px-5 pb-6 pt-2">
@@ -1637,9 +1657,9 @@ function ApplicationForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Application date" type="date" value={form.applicationDate} onChange={(value) => update("applicationDate", value)} error={errors.applicationDate} />
         <div className="grid gap-2">
-          <Label className="font-mono text-[12px] uppercase text-[#53675A]">Status</Label>
+          <Label id={statusId} className="font-mono text-[12px] uppercase text-[#53675A]">Status</Label>
           <Select value={form.status} onValueChange={(value) => update("status", value)}>
-            <SelectTrigger className="h-11 rounded-2xl border-[#D8E3D4] bg-white">
+            <SelectTrigger aria-labelledby={statusId} className="h-11 rounded-2xl border-[#D8E3D4] bg-white">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1655,19 +1675,21 @@ function ApplicationForm({
       </div>
       <Field label="Follow-up date" type="date" value={form.followUpDate} onChange={(value) => update("followUpDate", value)} error={errors.followUpDate} />
       <div className="grid gap-2">
-        <Label className="font-mono text-[12px] uppercase text-[#53675A]">Notes</Label>
+        <Label htmlFor={notesId} className="font-mono text-[12px] uppercase text-[#53675A]">Notes</Label>
         <Textarea
+          id={notesId}
           value={form.notes}
           onChange={(event) => update("notes", event.target.value)}
           aria-invalid={Boolean(errors.notes)}
+          aria-describedby={errors.notes ? notesErrorId : undefined}
           className="min-h-28 rounded-2xl border-[#D8E3D4] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
         />
-        {errors.notes ? <FieldError message={errors.notes} /> : null}
+        {errors.notes ? <FieldError id={notesErrorId} message={errors.notes} /> : null}
       </div>
       <Button
         onClick={onSave}
         disabled={busy}
-        className="h-11 rounded-2xl bg-[#17201B] font-mono text-[12px] text-[#F7FAF1] shadow-[0_18px_40px_-30px_rgba(15,28,21,0.9)] hover:bg-[#2A4033] active:scale-[0.98]"
+        className="h-11 rounded-2xl bg-[#17201B] font-mono text-[12px] text-[#F7FAF1] shadow-[0_18px_40px_-30px_rgba(15,28,21,0.9)] hover:bg-[#2A4033] active:scale-[0.96]"
       >
         {busy ? "Saving" : "Save application"}
       </Button>
@@ -1694,10 +1716,14 @@ function Field({
   pattern?: string;
   error?: string;
 }) {
+  const fieldId = useId();
+  const errorId = useId();
+
   return (
     <div className="grid gap-2">
-      <Label className="font-mono text-[12px] uppercase text-[#53675A]">{label}</Label>
+      <Label htmlFor={fieldId} className="font-mono text-[12px] uppercase text-[#53675A]">{label}</Label>
       <Input
+        id={fieldId}
         type={type}
         inputMode={inputMode}
         pattern={pattern}
@@ -1705,9 +1731,10 @@ function Field({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         aria-invalid={Boolean(error)}
+        aria-describedby={error ? errorId : undefined}
         className="h-11 rounded-2xl border-[#D8E3D4] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
       />
-      {error ? <FieldError message={error} /> : null}
+      {error ? <FieldError id={errorId} message={error} /> : null}
     </div>
   );
 }
@@ -1719,7 +1746,7 @@ function ApplicationCard({
   busy,
 }: {
   application: Application;
-  updateApplication: (id: string, patch: Partial<Application>) => void;
+  updateApplication: (id: string, patch: Partial<Application>) => Promise<void> | void;
   deleteApplication: (id: string) => void;
   busy: boolean;
 }) {
@@ -1757,7 +1784,10 @@ function ApplicationCard({
           {application.followUpDate ? <span className="font-mono text-[11px] text-[#53675A]">Follow-up: {application.followUpDate}</span> : null}
         </div>
         <Select value={application.status} onValueChange={(value) => updateApplication(application.id, { status: value as ApplicationStatus })}>
-          <SelectTrigger className={cn("h-9 rounded-2xl border text-[12px]", statusMeta[application.status].border, statusMeta[application.status].wash)}>
+          <SelectTrigger
+            aria-label={`Status for ${application.role} at ${application.companyName}`}
+            className={cn("h-9 rounded-2xl border text-[12px]", statusMeta[application.status].border, statusMeta[application.status].wash)}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -1785,24 +1815,18 @@ function ApplicationCard({
                 <SheetTitle>{application.companyName}</SheetTitle>
                 <SheetDescription>{application.role}</SheetDescription>
               </SheetHeader>
-              <div className="mt-6 grid gap-4">
-                <Field label="Notes" value={application.notes} onChange={(value) => updateApplication(application.id, { notes: value })} />
-                <Field
-                  label="Follow-up date"
-                  type="date"
-                  value={application.followUpDate ?? ""}
-                  onChange={(value) => updateApplication(application.id, { followUpDate: value || null })}
-                />
-                <Separator />
-                <p className="text-[13px] leading-6 text-[#53675A]">
-                  Keep notes truthful and specific. Use AI output as draft guidance, not a guarantee of outcomes.
-                </p>
-              </div>
+              <ApplicationDetailForm
+                key={application.updatedAt}
+                application={application}
+                updateApplication={updateApplication}
+                busy={busy}
+              />
             </SheetContent>
           </Sheet>
           <Button
             variant="outline"
             size="icon"
+            aria-label={`Delete ${application.role} at ${application.companyName}`}
             className="size-9 rounded-2xl border-[#D8E3D4] bg-white/80 text-[#53675A] hover:border-[#B94A48]/35 hover:bg-[#FFF4F2] hover:text-[#B94A48]"
             disabled={busy}
             onClick={() => deleteApplication(application.id)}
@@ -1812,6 +1836,83 @@ function ApplicationCard({
         </div>
       </div>
     </motion.div>
+  );
+}
+
+function ApplicationDetailForm({
+  application,
+  updateApplication,
+  busy,
+}: {
+  application: Application;
+  updateApplication: (id: string, patch: Partial<Application>) => Promise<void> | void;
+  busy: boolean;
+}) {
+  const [notes, setNotes] = useState(application.notes);
+  const [followUpDate, setFollowUpDate] = useState(application.followUpDate ?? "");
+  const [saving, setSaving] = useState(false);
+  const notesId = useId();
+  const isDirty = notes !== application.notes || followUpDate !== (application.followUpDate ?? "");
+
+  async function saveDetails() {
+    if (!isDirty) return;
+
+    setSaving(true);
+    try {
+      await updateApplication(application.id, {
+        notes,
+        followUpDate: followUpDate || null,
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function resetDraft() {
+    setNotes(application.notes);
+    setFollowUpDate(application.followUpDate ?? "");
+  }
+
+  return (
+    <div className="mt-6 grid gap-4">
+      <div className="grid gap-2">
+        <Label htmlFor={notesId} className="font-mono text-[12px] uppercase text-[#53675A]">Notes</Label>
+        <Textarea
+          id={notesId}
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+          placeholder="Keep interview signals, contact names, and next steps here."
+          className="min-h-36 rounded-2xl border-[#D8E3D4] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+        />
+      </div>
+      <Field label="Follow-up date" type="date" value={followUpDate} onChange={setFollowUpDate} />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-[12px] leading-5 text-[#53675A]">
+          {isDirty ? "Unsaved edits" : "Details are up to date"}
+        </p>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={resetDraft}
+            disabled={!isDirty || saving || busy}
+            className="h-10 rounded-2xl border-[#D8E3D4] bg-white px-4 font-mono text-[12px] text-[#53675A] hover:bg-[#F4F8EF] active:scale-[0.96]"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={saveDetails}
+            disabled={!isDirty || saving || busy}
+            className="h-10 rounded-2xl bg-[#17201B] px-4 font-mono text-[12px] text-[#F7FAF1] hover:bg-[#2A4033] active:scale-[0.96]"
+          >
+            {saving ? "Saving" : "Save details"}
+          </Button>
+        </div>
+      </div>
+      <Separator />
+      <p className="text-[13px] leading-6 text-[#53675A]">
+        Keep notes truthful and specific. Use AI output as draft guidance, not a guarantee of outcomes.
+      </p>
+    </div>
   );
 }
 
@@ -1851,6 +1952,10 @@ function ResumeView({
   resumeError: string | null;
 }) {
   const selectedApplication = applications.find((application) => application.id === selectedApplicationId);
+  const targetApplicationId = useId();
+  const jobDescriptionId = useId();
+  const resumeFileId = useId();
+  const resumeTextId = useId();
 
   return (
     <div className="grid gap-5">
@@ -1872,9 +1977,9 @@ function ResumeView({
             </p>
           </div>
           <div className="rounded-3xl border border-white/12 bg-white/8 p-3 backdrop-blur">
-            <p className="mb-2 font-mono text-[11px] uppercase text-[#BFD1C4]">Target application</p>
+            <p id={targetApplicationId} className="mb-2 font-mono text-[11px] uppercase text-[#BFD1C4]">Target application</p>
             <Select value={selectedApplicationId} onValueChange={setSelectedApplicationId}>
-              <SelectTrigger className="h-12 rounded-2xl border-white/12 bg-[#F7FAF1] text-[13px] text-[#17201B]">
+              <SelectTrigger aria-labelledby={targetApplicationId} className="h-12 rounded-2xl border-white/12 bg-[#F7FAF1] text-[13px] text-[#17201B]">
                 <SelectValue placeholder="Select application" />
               </SelectTrigger>
               <SelectContent>
@@ -1904,8 +2009,9 @@ function ResumeView({
           <div className="grid gap-4 p-4">
             {resumeError ? <ErrorNotice message={resumeError} /> : null}
             <div className="grid gap-2">
-              <Label className="font-mono text-[12px] uppercase text-[#53675A]">Job description</Label>
+              <Label htmlFor={jobDescriptionId} className="font-mono text-[12px] uppercase text-[#53675A]">Job description</Label>
               <Textarea
+                id={jobDescriptionId}
                 value={jobDescription}
                 onChange={(event) => setJobDescription(event.target.value)}
                 placeholder="Paste target job description here..."
@@ -1913,7 +2019,7 @@ function ResumeView({
               />
             </div>
             <div className="grid gap-2">
-              <Label className="font-mono text-[12px] uppercase text-[#53675A]">Resume content</Label>
+              <Label htmlFor={resumeTextId} className="font-mono text-[12px] uppercase text-[#53675A]">Resume content</Label>
               <div className="rounded-2xl border border-dashed border-[#BFD1C4] bg-white/72 p-3">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-start gap-3">
@@ -1928,8 +2034,10 @@ function ResumeView({
                     </div>
                   </div>
                   <Input
+                    id={resumeFileId}
                     type="file"
                     accept="application/pdf,.pdf"
+                    aria-label="Upload resume PDF"
                     disabled={resumeFileLoading}
                     onChange={(event) => {
                       void importResumePdf(event.target.files?.[0] ?? null);
@@ -1944,6 +2052,7 @@ function ResumeView({
                 {resumeFileError ? <div className="mt-3"><FieldError message={resumeFileError} /></div> : null}
               </div>
               <Textarea
+                id={resumeTextId}
                 value={resumeText}
                 onChange={(event) => setResumeText(event.target.value)}
                 placeholder="Paste current resume text here..."
@@ -1955,7 +2064,7 @@ function ResumeView({
             <Button
               onClick={analyzeResume}
               disabled={busy || quota.remaining <= 0}
-              className="h-11 w-full rounded-2xl bg-[#17201B] font-mono text-[12px] text-[#F7FAF1] shadow-[0_18px_42px_-30px_rgba(15,28,21,0.9)] hover:bg-[#2A4033] active:scale-[0.98]"
+              className="h-11 w-full rounded-2xl bg-[#17201B] font-mono text-[12px] text-[#F7FAF1] shadow-[0_18px_42px_-30px_rgba(15,28,21,0.9)] hover:bg-[#2A4033] active:scale-[0.96]"
             >
               <Bot className="size-4" />
               {busy ? "Analyzing" : "Analyze resume"}
@@ -2073,7 +2182,7 @@ function InterviewView({
   setSelectedApplicationId: (id: string) => void;
   questions: InterviewQuestion[];
   generateInterviewQuestions: () => void;
-  updateQuestion: (id: string, patch: Partial<InterviewQuestion>) => void;
+  updateQuestion: (id: string, patch: Partial<InterviewQuestion>) => Promise<void> | void;
   busy: boolean;
   quota: AiQuota;
 }) {
@@ -2099,7 +2208,7 @@ function InterviewView({
           <div className="rounded-3xl border border-[#D8E3D4] bg-white/72 p-3 shadow-[0_18px_40px_-34px_rgba(15,28,21,0.68)]">
             <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
               <Select value={selectedApplicationId} onValueChange={setSelectedApplicationId}>
-                <SelectTrigger className="h-11 rounded-2xl border-[#D8E3D4] bg-white text-[13px]">
+                <SelectTrigger aria-label="Select application for interview prep" className="h-11 rounded-2xl border-[#D8E3D4] bg-white text-[13px]">
                   <SelectValue placeholder="Select application" />
                 </SelectTrigger>
                 <SelectContent>
@@ -2113,7 +2222,7 @@ function InterviewView({
               <Button
                 onClick={generateInterviewQuestions}
                 disabled={busy || quota.remaining <= 0}
-                className="h-11 rounded-2xl bg-[#17201B] px-4 font-mono text-[12px] text-[#F7FAF1] hover:bg-[#2A4033] active:scale-[0.98]"
+                className="h-11 rounded-2xl bg-[#17201B] px-4 font-mono text-[12px] text-[#F7FAF1] hover:bg-[#2A4033] active:scale-[0.96]"
               >
                 <Bot className="size-4" />
                 {busy ? "Generating" : "Generate questions"}
@@ -2142,27 +2251,11 @@ function InterviewView({
             <div className="grid gap-3 bg-[#F1F6ED] p-3 md:grid-cols-2 xl:grid-cols-3">
               {group.questions.length ? (
                 group.questions.map((question) => (
-                  <div
-                    key={question.id}
-                    className="grid gap-3 rounded-[22px] border border-[#D8E3D4] bg-white/88 p-3 shadow-[0_16px_36px_-34px_rgba(15,28,21,0.7)] transition-[border-color,transform,box-shadow] hover:-translate-y-0.5 hover:border-[#91A99A] hover:shadow-[0_24px_52px_-40px_rgba(15,28,21,0.85)]"
-                  >
-                    <div className="flex gap-3">
-                      <Checkbox
-                        checked={question.practiced}
-                        onCheckedChange={(checked) => updateQuestion(question.id, { practiced: checked === true })}
-                        className="mt-1"
-                      />
-                      <p className={cn("text-[13px] leading-5 text-[#17201B]", question.practiced && "text-[#53675A] line-through")}>
-                        {question.question}
-                      </p>
-                    </div>
-                    <Textarea
-                      value={question.answerNotes}
-                      onChange={(event) => updateQuestion(question.id, { answerNotes: event.target.value })}
-                      placeholder="Answer notes"
-                      className="min-h-24 rounded-2xl border-[#D8E3D4] bg-[#F9FBF4]"
-                    />
-                  </div>
+                  <InterviewQuestionCard
+                    key={`${question.id}-${question.updatedAt}`}
+                    question={question}
+                    updateQuestion={updateQuestion}
+                  />
                 ))
               ) : (
                 <EmptyState title="No questions yet" description="Generate questions for the selected application." />
@@ -2170,6 +2263,68 @@ function InterviewView({
             </div>
           </section>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function InterviewQuestionCard({
+  question,
+  updateQuestion,
+}: {
+  question: InterviewQuestion;
+  updateQuestion: (id: string, patch: Partial<InterviewQuestion>) => Promise<void> | void;
+}) {
+  const [answerNotes, setAnswerNotes] = useState(question.answerNotes);
+  const [saving, setSaving] = useState(false);
+  const answerNotesId = useId();
+  const isDirty = answerNotes !== question.answerNotes;
+
+  async function saveAnswerNotes() {
+    if (!isDirty) return;
+
+    setSaving(true);
+    try {
+      await updateQuestion(question.id, { answerNotes });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="grid gap-3 rounded-[22px] border border-[#D8E3D4] bg-white/88 p-3 shadow-[0_16px_36px_-34px_rgba(15,28,21,0.7)] transition-[border-color,transform,box-shadow] hover:-translate-y-0.5 hover:border-[#91A99A] hover:shadow-[0_24px_52px_-40px_rgba(15,28,21,0.85)]">
+      <div className="flex gap-3">
+        <Checkbox
+          checked={question.practiced}
+          aria-label={`Mark question as ${question.practiced ? "not practiced" : "practiced"}`}
+          onCheckedChange={(checked) => updateQuestion(question.id, { practiced: checked === true })}
+          className="mt-1"
+        />
+        <p className={cn("text-[13px] leading-5 text-[#17201B]", question.practiced && "text-[#53675A] line-through")}>
+          {question.question}
+        </p>
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor={answerNotesId} className="sr-only">Answer notes</Label>
+        <Textarea
+          id={answerNotesId}
+          value={answerNotes}
+          onChange={(event) => setAnswerNotes(event.target.value)}
+          placeholder="Answer notes"
+          className="min-h-24 rounded-2xl border-[#D8E3D4] bg-[#F9FBF4]"
+        />
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[11px] text-[#53675A]">{isDirty ? "Unsaved notes" : "Saved"}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={saveAnswerNotes}
+            disabled={!isDirty || saving}
+            className="h-9 rounded-2xl border-[#D8E3D4] bg-white/80 px-3 font-mono text-[11px] hover:bg-white active:scale-[0.96]"
+          >
+            {saving ? "Saving" : "Save notes"}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -2216,14 +2371,14 @@ function SettingsView({
             <Field label="Display name" value={name || guest?.name || ""} onChange={setName} />
             <Button
               onClick={saveName}
-              className="h-11 w-fit rounded-2xl bg-[#17201B] px-5 font-mono text-[12px] text-[#F7FAF1] hover:bg-[#2A4033] active:scale-[0.98]"
+              className="h-11 w-fit rounded-2xl bg-[#17201B] px-5 font-mono text-[12px] text-[#F7FAF1] hover:bg-[#2A4033] active:scale-[0.96]"
             >
               Save name
             </Button>
             <Button
               variant="outline"
               onClick={startOnboarding}
-              className="h-11 w-fit rounded-2xl border-[#D8E3D4] bg-white px-5 font-mono text-[12px] text-[#17201B] hover:bg-[#F4F8EF] active:scale-[0.98]"
+              className="h-11 w-fit rounded-2xl border-[#D8E3D4] bg-white px-5 font-mono text-[12px] text-[#17201B] hover:bg-[#F4F8EF] active:scale-[0.96]"
             >
               Replay walkthrough
             </Button>
@@ -2260,7 +2415,7 @@ function SettingsView({
             <DialogTrigger asChild>
               <Button
                 variant="outline"
-                className="h-11 rounded-2xl border-[#B94A48]/35 bg-white/70 px-4 font-mono text-[12px] text-[#93000A] hover:bg-white hover:text-[#93000A] active:scale-[0.98]"
+                className="h-11 rounded-2xl border-[#B94A48]/35 bg-white/70 px-4 font-mono text-[12px] text-[#93000A] hover:bg-white hover:text-[#93000A] active:scale-[0.96]"
               >
                 <Trash2 className="size-4" />
                 Clear workspace
@@ -2288,7 +2443,7 @@ function SettingsView({
                 <Button
                   onClick={clearAllData}
                   disabled={clearingData}
-                  className="h-11 rounded-2xl bg-[#B94A48] px-4 font-mono text-[12px] text-white hover:bg-[#9F3836] active:scale-[0.98]"
+                  className="h-11 rounded-2xl bg-[#B94A48] px-4 font-mono text-[12px] text-white hover:bg-[#9F3836] active:scale-[0.96]"
                 >
                   {clearingData ? "Clearing" : "Clear workspace"}
                 </Button>
@@ -2392,9 +2547,9 @@ function ErrorNotice({ message }: { message: string }) {
   );
 }
 
-function FieldError({ message }: { message: string }) {
+function FieldError({ id, message }: { id?: string; message: string }) {
   return (
-    <p role="alert" className="text-[12px] leading-5 text-[#B94A48]">
+    <p id={id} role="alert" className="text-[12px] leading-5 text-[#B94A48]">
       {message}
     </p>
   );

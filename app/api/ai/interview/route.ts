@@ -3,7 +3,13 @@ import { generateInterviewQuestionsWithAI, toInterviewRecords } from "@/lib/jobp
 import { requireGuest } from "@/lib/jobpilot/guest";
 import { RATE_LIMITS, rateLimit, rateLimitByKey } from "@/lib/jobpilot/rate-limit";
 import { routeErrorResponse, validationErrorResponse } from "@/lib/jobpilot/route-errors";
-import { addActivity, consumeAiQuotaForSubjects, getAiQuota, transact } from "@/lib/jobpilot/store";
+import {
+  addActivity,
+  consumeAiQuotaForSubjects,
+  getAiQuota,
+  refundAiQuotaForSubjects,
+  transact,
+} from "@/lib/jobpilot/store";
 import { interviewGenerateSchema } from "@/lib/jobpilot/validators";
 import { buildAiQuotaSubjects, getOrCreateVisitorId, visitorSubjectId } from "@/lib/jobpilot/visitor";
 
@@ -48,8 +54,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const generated = await generateInterviewQuestionsWithAI(quotaCheck.application);
-    const records = toInterviewRecords(guest.id, quotaCheck.application.id, generated);
+    const generation = await generateInterviewQuestionsWithAI(quotaCheck.application);
+    const quota = generation.usedModel
+      ? quotaCheck.quota
+      : await transact((database) => refundAiQuotaForSubjects(database, quotaSubjects, quotaCheck.quota.date));
+    const records = toInterviewRecords(guest.id, quotaCheck.application.id, generation.data);
 
     const result = await transact((database) => {
       const application = database.applications.find(
@@ -75,7 +84,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Application not found." }, { status: 404 });
     }
 
-    return NextResponse.json({ ...result, quota: quotaCheck.quota });
+    return NextResponse.json({ ...result, quota });
   } catch (error) {
     return routeErrorResponse(error, "Could not generate interview questions.");
   }

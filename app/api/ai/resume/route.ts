@@ -3,7 +3,15 @@ import { analyzeResumeWithAI } from "@/lib/jobpilot/ai";
 import { requireGuest } from "@/lib/jobpilot/guest";
 import { RATE_LIMITS, rateLimit, rateLimitByKey } from "@/lib/jobpilot/rate-limit";
 import { routeErrorResponse, validationErrorResponse } from "@/lib/jobpilot/route-errors";
-import { addActivity, consumeAiQuotaForSubjects, createId, getAiQuota, nowIso, transact } from "@/lib/jobpilot/store";
+import {
+  addActivity,
+  consumeAiQuotaForSubjects,
+  createId,
+  getAiQuota,
+  nowIso,
+  refundAiQuotaForSubjects,
+  transact,
+} from "@/lib/jobpilot/store";
 import { resumeAnalyzeSchema } from "@/lib/jobpilot/validators";
 import { buildAiQuotaSubjects, getOrCreateVisitorId, visitorSubjectId } from "@/lib/jobpilot/visitor";
 
@@ -49,7 +57,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const feedback = await analyzeResumeWithAI(parsed.data.resumeText, parsed.data.jobDescription);
+    const generation = await analyzeResumeWithAI(parsed.data.resumeText, parsed.data.jobDescription);
+    const quota = generation.usedModel
+      ? quotaCheck.quota
+      : await transact((database) => refundAiQuotaForSubjects(database, quotaSubjects, quotaCheck.quota.date));
     const analysis = await transact((database) => {
       const record = {
         id: createId("res"),
@@ -57,7 +68,7 @@ export async function POST(request: Request) {
         applicationId: parsed.data.applicationId || null,
         resumeText: parsed.data.resumeText,
         jobDescription: parsed.data.jobDescription,
-        ...feedback,
+        ...generation.data,
         createdAt: nowIso(),
       };
 
@@ -72,7 +83,7 @@ export async function POST(request: Request) {
       return record;
     });
 
-    return NextResponse.json({ analysis, quota: quotaCheck.quota });
+    return NextResponse.json({ analysis, quota });
   } catch (error) {
     return routeErrorResponse(error, "Could not analyze resume.");
   }

@@ -28,6 +28,9 @@ JobPilot keeps framework routes, product code, assets, and generated files in se
 
 - `public/brand/` stores canonical brand assets served by Next.js.
 - `docs/SECURITY_THREAT_MODEL.md` documents public-release risk controls.
+- `docs/DEPLOYMENT.md` documents local-demo and hosted-demo deployment limits.
+- `ROADMAP.md` lists contributor-friendly future work.
+- `CHANGELOG.md` records release-facing changes.
 
 ## Local Generated Files
 
@@ -37,3 +40,8 @@ These are intentionally ignored:
 - `.next/`, `tsconfig.tsbuildinfo`, and `node_modules/`.
 - `data/` for local JSON storage fallback.
 - `.playwright-cli/` and `output/` for browser-check artifacts.
+
+## Tests
+
+- `*.test.ts` files live beside the domain code they cover.
+- Validation, storage, route ownership, and quota behavior should have tests before larger refactors.

@@ -3,11 +3,32 @@ import { sanitizeText } from "@/lib/jobpilot/sanitize";
 import { APPLICATION_STATUSES, QUESTION_CATEGORIES } from "@/lib/jobpilot/types";
 
 export const idSchema = z.string().trim().regex(/^[a-z]{3}_[a-f0-9]{16}$/, "Invalid record id.");
+
+function isCalendarDate(value: string) {
+  const [yearText, monthText, dayText] = value.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false;
+
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
+function hasDefinedPatchValue(value: Record<string, unknown>) {
+  return Object.values(value).some((item) => item !== undefined);
+}
+
 const dateSchema = z
   .string()
   .trim()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Use a YYYY-MM-DD date.")
-  .refine((value) => !Number.isNaN(Date.parse(`${value}T00:00:00.000Z`)), "Enter a valid date.");
+  .refine(isCalendarDate, "Enter a valid date.");
 
 const singleLine = (maxLength: number) =>
   z.string().transform((value) => sanitizeText(value, { maxLength })).pipe(z.string().max(maxLength));
@@ -96,7 +117,7 @@ export const applicationPatchSchema = z.object({
   status: z.enum(APPLICATION_STATUSES).optional(),
   notes: optionalLongTextPatch(4000),
   followUpDate: z.preprocess((value) => (value === "" || value === undefined ? null : value), dateSchema.nullable()).optional(),
-}).strict();
+}).strict().refine(hasDefinedPatchValue, "Provide at least one field to update.");
 
 export const resumeAnalyzeSchema = z.object({
   applicationId: idSchema.nullable().optional(),
@@ -118,7 +139,7 @@ export const interviewPatchSchema = z.object({
   practiced: z.boolean().optional(),
   answerNotes: optionalLongTextPatch(4000),
   category: z.enum(QUESTION_CATEGORIES).optional(),
-}).strict();
+}).strict().refine(hasDefinedPatchValue, "Provide at least one field to update.");
 
 export const onboardingSchema = z.object({
   onboardingCompleted: z.literal(true),

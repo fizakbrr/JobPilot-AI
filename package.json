@@ -2,6 +2,16 @@
   "name": "jobpilot-ai",
   "version": "0.1.0",
   "private": true,
+  "description": "A focused open-source workspace for job applications, resume checks, follow-ups, and interview prep.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fizakbrr/JobPilot-AI.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fizakbrr/JobPilot-AI/issues"
+  },
+  "homepage": "https://github.com/fizakbrr/JobPilot-AI#readme",
   "engines": {
     "node": ">=20.20.0",
     "npm": ">=10"
@@ -11,6 +21,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
@@ -20,7 +31,8 @@
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.6",
     "shadcn": "^4.8.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

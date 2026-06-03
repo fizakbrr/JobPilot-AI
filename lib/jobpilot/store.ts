@@ -99,18 +99,30 @@ export async function readDatabase(): Promise<JobPilotDatabase> {
 
 export async function writeDatabase(database: JobPilotDatabase) {
   await ensureDatabase();
-  await fs.writeFile(dataPath, JSON.stringify(normalizeDatabase(database), null, 2), "utf8");
+  const temporaryPath = path.join(dataDirectory, `.jobpilot.${randomUUID()}.tmp`);
+  const serialized = JSON.stringify(normalizeDatabase(database), null, 2);
+
+  try {
+    await fs.writeFile(temporaryPath, serialized, "utf8");
+    await fs.rename(temporaryPath, dataPath);
+  } catch (error) {
+    await fs.rm(temporaryPath, { force: true }).catch(() => undefined);
+    throw error;
+  }
 }
 
-export async function resetDatabase(options: { preserveAiUsage?: boolean } = {}) {
-  const nextDatabase = cloneEmptyDatabase();
+export async function deleteGuestWorkspace(guestId: string) {
+  return transact((database) => {
+    const hadGuest = database.guests.some((guest) => guest.id === guestId);
 
-  if (options.preserveAiUsage !== false) {
-    const currentDatabase = await readDatabase();
-    nextDatabase.aiUsage = currentDatabase.aiUsage;
-  }
+    database.guests = database.guests.filter((guest) => guest.id !== guestId);
+    database.applications = database.applications.filter((application) => application.guestId !== guestId);
+    database.resumeAnalyses = database.resumeAnalyses.filter((analysis) => analysis.guestId !== guestId);
+    database.interviewQuestions = database.interviewQuestions.filter((question) => question.guestId !== guestId);
+    database.activityEvents = database.activityEvents.filter((event) => event.guestId !== guestId);
 
-  await writeDatabase(nextDatabase);
+    return hadGuest;
+  });
 }
 
 let transactionQueue: Promise<unknown> = Promise.resolve();
@@ -278,6 +290,12 @@ function incrementAiUsage(database: JobPilotDatabase, subjectId: string, date: s
   usage.count += 1;
 }
 
+function decrementAiUsage(database: JobPilotDatabase, subjectId: string, date: string) {
+  const usage = database.aiUsage.find((item) => item.subjectId === subjectId && item.date === date);
+  if (!usage) return;
+  usage.count = Math.max(0, usage.count - 1);
+}
+
 export function consumeAiQuota(database: JobPilotDatabase, subjectId: string, limit = getDailyAiActionLimit()) {
   const quota = getAiQuota(database, subjectId, limit);
   if (quota.remaining <= 0) return { allowed: false, quota };
@@ -319,6 +337,22 @@ export function consumeAiQuotaForSubjects(
     allowed: true as const,
     quota: getAiQuota(database, primarySubject.subjectId, primarySubject.limit),
   };
+}
+
+export function refundAiQuotaForSubjects(
+  database: JobPilotDatabase,
+  subjects: { subjectId: string; limit: number }[],
+  date = todayKey(),
+) {
+  const [primarySubject] = subjects;
+
+  for (const subject of subjects) {
+    decrementAiUsage(database, subject.subjectId, date);
+  }
+
+  return primarySubject
+    ? getAiQuota(database, primarySubject.subjectId, primarySubject.limit)
+    : createAiQuotaSnapshot(getDailyAiActionLimit(), 0, date);
 }
 
 export type ApplicationDetailBundle = {

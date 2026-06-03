@@ -1,6 +1,7 @@
 import "server-only";
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { z } from "zod";
 import { sanitizeText, sanitizeTextList } from "@/lib/jobpilot/sanitize";
 import type { Application, InterviewQuestion, QuestionCategory, ResumeAnalysis } from "@/lib/jobpilot/types";
 import { QUESTION_CATEGORIES } from "@/lib/jobpilot/types";
@@ -16,15 +17,74 @@ type GeneratedQuestion = {
   question: string;
 };
 
-function extractJson(text: string): Record<string, unknown> | null {
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) return null;
+type AiGenerationResult<T> = {
+  data: T;
+  usedModel: boolean;
+};
 
-  try {
-    return JSON.parse(match[0]) as Record<string, unknown>;
-  } catch {
-    return null;
+const resumeFeedbackSchema = z.object({
+  score: z.coerce.number().catch(64),
+  strengths: z.array(z.string()).catch([]),
+  missingKeywords: z.array(z.string()).catch([]),
+  suggestions: z.array(z.string()).catch([]),
+  rewrittenBullets: z.array(z.string()).catch([]),
+  finalRecommendation: z.string().catch(""),
+}).passthrough();
+
+const generatedQuestionsSchema = z.object({
+  questions: z.array(
+    z.object({
+      category: z.enum(QUESTION_CATEGORIES),
+      question: z.string(),
+    }),
+  ).catch([]),
+}).passthrough();
+
+function clampScore(score: number) {
+  if (!Number.isFinite(score)) return 64;
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function extractJson(text: string): unknown | null {
+  const start = text.indexOf("{");
+  if (start < 0) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let index = start; index < text.length; index += 1) {
+    const character = text[index];
+
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+
+    if (character === "\\") {
+      escaped = inString;
+      continue;
+    }
+
+    if (character === "\"") {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) continue;
+    if (character === "{") depth += 1;
+    if (character === "}") depth -= 1;
+
+    if (depth === 0) {
+      try {
+        return JSON.parse(text.slice(start, index + 1)) as unknown;
+      } catch {
+        return null;
+      }
+    }
   }
+
+  return null;
 }
 
 function isGeneratedQuestion(item: unknown): item is GeneratedQuestion {
@@ -75,9 +135,33 @@ export function fallbackResumeFeedback(resumeText: string, jobDescription: strin
   };
 }
 
-export async function analyzeResumeWithAI(resumeText: string, jobDescription: string): Promise<ResumeFeedback> {
+function normalizeResumeFeedback(input: unknown, fallback: ResumeFeedback): ResumeFeedback | null {
+  const parsed = resumeFeedbackSchema.safeParse(input);
+  if (!parsed.success) return null;
+
+  const strengths = sanitizeTextList(parsed.data.strengths, { maxLength: 240 }).slice(0, 6);
+  const missingKeywords = sanitizeTextList(parsed.data.missingKeywords, { maxLength: 80 }).slice(0, 10);
+  const suggestions = sanitizeTextList(parsed.data.suggestions, { maxLength: 320 }).slice(0, 8);
+  const rewrittenBullets = sanitizeTextList(parsed.data.rewrittenBullets, { maxLength: 360 }).slice(0, 5);
+  const finalRecommendation = sanitizeText(parsed.data.finalRecommendation, { maxLength: 500 });
+
+  return {
+    score: clampScore(parsed.data.score),
+    strengths: strengths.length ? strengths : fallback.strengths,
+    missingKeywords: missingKeywords.length ? missingKeywords : fallback.missingKeywords,
+    suggestions: suggestions.length ? suggestions : fallback.suggestions,
+    rewrittenBullets: rewrittenBullets.length ? rewrittenBullets : fallback.rewrittenBullets,
+    finalRecommendation: finalRecommendation || fallback.finalRecommendation,
+  };
+}
+
+export async function analyzeResumeWithAI(
+  resumeText: string,
+  jobDescription: string,
+): Promise<AiGenerationResult<ResumeFeedback>> {
+  const fallback = fallbackResumeFeedback(resumeText, jobDescription);
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return fallbackResumeFeedback(resumeText, jobDescription);
+  if (!apiKey) return { data: fallback, usedModel: false };
 
   try {
     const client = new GoogleGenerativeAI(apiKey);
@@ -106,24 +190,10 @@ Job description:
 ${jobDescription}
 `);
 
-    const parsed = extractJson(result.response.text());
-    if (!parsed) return fallbackResumeFeedback(resumeText, jobDescription);
-
-    return {
-      score: Number(parsed.score) || 64,
-      strengths: sanitizeTextList(parsed.strengths, { maxLength: 240 }).slice(0, 6),
-      missingKeywords: Array.isArray(parsed.missingKeywords)
-        ? sanitizeTextList(parsed.missingKeywords, { maxLength: 80 }).slice(0, 10)
-        : [],
-      suggestions: sanitizeTextList(parsed.suggestions, { maxLength: 320 }).slice(0, 8),
-      rewrittenBullets: sanitizeTextList(parsed.rewrittenBullets, { maxLength: 360 }).slice(0, 5),
-      finalRecommendation:
-        typeof parsed.finalRecommendation === "string"
-          ? sanitizeText(parsed.finalRecommendation, { maxLength: 500 })
-          : "Review the AI feedback before using it externally.",
-    };
+    const feedback = normalizeResumeFeedback(extractJson(result.response.text()), fallback);
+    return feedback ? { data: feedback, usedModel: true } : { data: fallback, usedModel: false };
   } catch {
-    return fallbackResumeFeedback(resumeText, jobDescription);
+    return { data: fallback, usedModel: false };
   }
 }
 
@@ -160,9 +230,12 @@ function fallbackQuestions(application: Application): Array<{ category: Question
   ];
 }
 
-export async function generateInterviewQuestionsWithAI(application: Application) {
+export async function generateInterviewQuestionsWithAI(
+  application: Application,
+): Promise<AiGenerationResult<Array<{ category: QuestionCategory; question: string }>>> {
+  const fallback = fallbackQuestions(application);
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return fallbackQuestions(application);
+  if (!apiKey) return { data: fallback, usedModel: false };
 
   try {
     const client = new GoogleGenerativeAI(apiKey);
@@ -185,9 +258,8 @@ Source: ${application.sourcePlatform || "Not specified"}
 Notes: ${application.notes || "None"}
 `);
 
-    const parsed = extractJson(result.response.text());
-    const questions = Array.isArray(parsed?.questions) ? parsed.questions : [];
-    const valid = questions
+    const parsed = generatedQuestionsSchema.safeParse(extractJson(result.response.text()));
+    const valid = (parsed.success ? parsed.data.questions : [])
       .filter(isGeneratedQuestion)
       .slice(0, 14)
       .map((question) => ({
@@ -196,9 +268,9 @@ Notes: ${application.notes || "None"}
       }))
       .filter((question) => question.question);
 
-    return valid.length ? valid : fallbackQuestions(application);
+    return valid.length ? { data: valid, usedModel: true } : { data: fallback, usedModel: false };
   } catch {
-    return fallbackQuestions(application);
+    return { data: fallback, usedModel: false };
   }
 }
 
