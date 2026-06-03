@@ -8,23 +8,28 @@ import {
   ArrowRight,
   ArrowUpRight,
   BarChart3,
-  Bot,
   BriefcaseBusiness,
+  CalendarClock,
   CheckCircle2,
   ClipboardList,
-  Compass,
+  Clock3,
+  Database,
+  FileSearch,
   FileText,
+  Filter,
   LayoutDashboard,
+  ListChecks,
   Loader2,
   Menu,
+  NotebookPen,
   PanelRightOpen,
   Plus,
   Search,
-  Send,
   Settings,
   ShieldCheck,
   Trash2,
   Upload,
+  UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -165,35 +170,42 @@ const statusMeta: Record<ApplicationStatus, { dot: string; border: string; label
 const onboardingSteps = [
   {
     view: "dashboard",
-    title: "Start with a calm overview.",
-    body: "The dashboard gives you the current shape of your search: open roles, follow-ups, interview progress, and AI usage. Check it when you need direction.",
-    outcome: "You will always know what needs attention next.",
+    title: "Start with the overview.",
+    body: "See your pipeline, follow-ups, interview progress, and AI usage at a glance.",
+    outcome: "Use this screen when you need to decide what deserves attention next.",
   },
   {
     view: "applications",
-    title: "Add each opportunity once.",
-    body: "Capture the company, role, source, salary, dates, and notes while the details are fresh. Move cards only when the stage changes.",
-    outcome: "Your board stays accurate without turning into extra admin work.",
+    title: "Track each application once.",
+    body: "Save company, role, source, dates, salary, link, and notes in one record.",
+    outcome: "Update the status when the role moves forward, stalls, or closes.",
   },
   {
     view: "resume",
-    title: "Use resume feedback carefully.",
-    body: "Paste a role description and your resume, or upload a PDF. JobPilot points out gaps and draft improvements, but you stay in control of what you use.",
-    outcome: "You get sharper edits without overstating your experience.",
+    title: "Review your resume against a role.",
+    body: "Paste a job description and resume to get targeted feedback before you apply.",
+    outcome: "Use the suggestions as editing notes, not as automatic replacements.",
   },
   {
     view: "interviews",
-    title: "Prepare for the next conversation.",
-    body: "Generate role-specific practice prompts, mark what you have rehearsed, and keep rough notes beside each question.",
-    outcome: "Preparation becomes trackable instead of scattered.",
+    title: "Prepare for the interview.",
+    body: "Generate role-specific questions and keep practice notes beside each role.",
+    outcome: "Mark answers as practiced so preparation stays visible.",
   },
   {
     view: "settings",
-    title: "Keep the workspace under your control.",
-    body: "Settings holds your display name, AI quota, and workspace controls. You can clear application data whenever you need a clean start.",
-    outcome: "No account is required, and your local data remains visible to you.",
+    title: "Control your demo workspace.",
+    body: "Update your display name, replay onboarding, monitor AI usage, or clear local data.",
+    outcome: "No account is required, and manual tracking keeps working after AI actions run out.",
   },
 ] as const satisfies ReadonlyArray<{ view: View; title: string; body: string; outcome: string }>;
+
+const firstTimeChecklist = [
+  "Add your first application",
+  "Set a follow-up date",
+  "Paste resume text",
+  "Generate interview questions",
+] as const;
 
 function formatCurrency(value: number | null) {
   if (!value) return "Not set";
@@ -233,8 +245,14 @@ function validateApplicationForm(form: ApplicationFormState) {
   };
 }
 
-function formatAiActionLimit(limit: number) {
-  return `${limit} AI ${limit === 1 ? "action" : "actions"}`;
+function formatAiActionsLeft(quota: AiQuota) {
+  return `${quota.remaining} AI ${quota.remaining === 1 ? "action" : "actions"} left today`;
+}
+
+function isApplicationFormDirty(form: ApplicationFormState) {
+  return (Object.keys(initialApplicationForm) as Array<keyof ApplicationFormState>).some(
+    (key) => form[key] !== initialApplicationForm[key],
+  );
 }
 
 function statusToastMessage(status: ApplicationStatus) {
@@ -645,6 +663,15 @@ export function JobPilotApp() {
     setOnboardingOpen(true);
   }
 
+  function setApplicationSheetOpen(open: boolean) {
+    if (!open && isApplicationFormDirty(applicationForm)) {
+      const shouldClose = window.confirm("Discard this application draft?");
+      if (!shouldClose) return;
+    }
+
+    setAddSheetOpen(open);
+  }
+
   const openAdd = () => {
     setView("applications");
     setAddSheetOpen(true);
@@ -689,6 +716,7 @@ export function JobPilotApp() {
             <Button
               onClick={saveName}
               disabled={busyAction === "name" || !name.trim()}
+              aria-label="Enter JobPilot workspace"
               className="h-11 rounded-xl bg-[#1B7A4E] font-mono text-[12px] shadow-[0_16px_28px_-18px_rgba(27,122,78,0.9)] hover:bg-[#155F3D] active:scale-[0.96]"
             >
               {busyAction === "name" ? "Preparing workspace" : "Enter workspace"}
@@ -755,7 +783,7 @@ export function JobPilotApp() {
                     deleteApplication={deleteApplication}
                     busyAction={busyAction}
                     addSheetOpen={addSheetOpen}
-                    setAddSheetOpen={setAddSheetOpen}
+                    setAddSheetOpen={setApplicationSheetOpen}
                   />
                 </motion.div>
               ) : null}
@@ -817,22 +845,42 @@ export function JobPilotApp() {
   );
 }
 
-const landingFlow = [
+const landingPainPoints = [
   {
-    title: "Capture the lead",
-    description: "Company, role, salary, source, and follow-up date live in one quiet record.",
+    title: "Applications get scattered",
+    description: "Replace notes, spreadsheets, and saved emails with one pipeline record per role.",
     icon: BriefcaseBusiness,
   },
   {
-    title: "Read the route",
-    description: "A board view keeps every stage visible without turning tracking into busywork.",
-    icon: Compass,
+    title: "Follow-ups are easy to miss",
+    description: "Put dates beside the roles so the dashboard can surface the next move.",
+    icon: CalendarClock,
   },
   {
-    title: "Spend AI carefully",
-    description: "Resume checks and interview prompts stay capped so the public demo remains usable.",
-    icon: ShieldCheck,
+    title: "Resume feedback loses context",
+    description: "Compare your resume against the actual job description you care about.",
+    icon: FileSearch,
   },
+  {
+    title: "Interview prep gets fragmented",
+    description: "Keep generated questions, practiced status, and answer notes attached to a role.",
+    icon: NotebookPen,
+  },
+] as const;
+
+const landingFeatures = [
+  ["Track applications", "Company, role, salary, source, dates, link, notes, and status in one record.", BriefcaseBusiness],
+  ["Manage follow-ups", "Upcoming and overdue dates become visible before they turn into missed opportunities.", CalendarClock],
+  ["Analyze resumes", "Find keyword gaps, strong matches, and bullet rewrites for one real role.", FileSearch],
+  ["Prepare for interviews", "Generate role-specific questions and save practice notes next to each prompt.", ClipboardList],
+  ["Search your pipeline", "Filter by status, source, and application text when the board starts filling up.", Search],
+  ["Keep guest data local", "No account is required; demo data is tied to this browser session.", Database],
+] as const;
+
+const howItWorks = [
+  ["Enter a display name", "Create a browser workspace without signing up."],
+  ["Add your first application", "Save the role details and choose the current stage."],
+  ["Use AI when it helps", "Run resume checks or interview questions only when you need support."],
 ] as const;
 
 function OnboardingWalkthrough({
@@ -945,11 +993,40 @@ function OnboardingWalkthrough({
 }
 
 function LandingPage({ onStart }: { onStart: () => void }) {
-  const scrollToFlow = () => document.getElementById("landing-flow")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const scrollToFlow = () => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   return (
-    <div className="min-h-dvh bg-[#EEF3EA] text-[#17201B]">
-      <section className="relative min-h-[84dvh] overflow-hidden bg-[#0F1C15] text-[#F7FAF1]">
+    <div className="min-h-dvh bg-[#F3F0E8] text-[#17201B]">
+      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#0F1C15]/88 text-[#F7FAF1] backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-375 items-center gap-4 px-4 md:px-7">
+          <a href="#top" className="flex h-10 w-42 items-center rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#DDE85F] md:w-52">
+            <Image src="/brand/logo-complete.svg" alt={APP_CONFIG.name} width={214} height={69} className="h-auto w-full brightness-0 invert" priority />
+          </a>
+          <nav aria-label="Landing page" className="ml-auto hidden items-center gap-6 text-[13px] font-medium text-[#D7E4DA] md:flex">
+            <a className="transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#DDE85F]" href="#features">
+              Features
+            </a>
+            <a className="transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#DDE85F]" href="#how-it-works">
+              How it works
+            </a>
+            <button
+              type="button"
+              onClick={onStart}
+              className="transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#DDE85F]"
+            >
+              Workspace
+            </button>
+          </nav>
+          <Button
+            onClick={onStart}
+            className="ml-auto h-10 rounded-xl bg-[#DDE85F] px-4 font-mono text-[12px] text-[#17201B] shadow-[0_14px_32px_-24px_rgba(221,232,95,0.9)] transition-[background-color,transform] hover:bg-[#E9F277] active:scale-[0.96] md:ml-4"
+          >
+            Try the demo
+          </Button>
+        </div>
+      </header>
+
+      <section id="top" className="relative min-h-[92dvh] overflow-hidden bg-[#0F1C15] pt-16 text-[#F7FAF1]">
         <Image
           src="/landing/jobpilot-command-desk.png"
           alt="Career planning desk with laptop and application cards"
@@ -958,127 +1035,240 @@ function LandingPage({ onStart }: { onStart: () => void }) {
           sizes="100vw"
           priority
         />
-        <div className="absolute inset-0 bg-[#07180E]/64" />
-        <div className="relative mx-auto flex min-h-[84dvh] max-w-375 flex-col px-4 pb-10 pt-5 md:px-7">
-          <div className="landing-reveal flex items-center justify-between gap-4">
-            <div className="flex h-12 w-44 items-center md:w-56">
-              <Image src="/brand/logo-complete.svg" alt={APP_CONFIG.name} width={214} height={69} className="h-auto w-full brightness-0 invert" priority />
-            </div>
-            <Button
-              onClick={onStart}
-              className="group h-11 rounded-full bg-[#DDE85F] pl-5 pr-1.5 font-mono text-[12px] text-[#17201B] shadow-[0_18px_42px_-30px_rgba(10,20,14,0.95)] transition-[background-color,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-[#E9F277] active:scale-[0.96]"
-            >
-              Open workspace
-              <span className="grid size-8 place-items-center rounded-full bg-[#17201B] text-[#F7FAF1] transition-[transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
-                <ArrowRight className="size-3.5" strokeWidth={1.5} />
-              </span>
-            </Button>
-          </div>
-
-          <div className="grid flex-1 content-end pb-6 pt-16 md:pb-12">
-            <div className="landing-reveal max-w-3xl" style={{ animationDelay: "120ms" }}>
-              <h1 className="max-w-3xl text-[56px] font-semibold leading-[0.9] tracking-[-0.07em] text-balance md:text-[92px]">
-                JobPilot AI
-              </h1>
-              <p className="mt-6 max-w-2xl text-[16px] leading-7 text-[#D7E4DA] md:text-[18px]">
-                A public demo for tracking applications, tightening resumes, planning follow-ups, and practicing interviews without account friction.
-              </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Button
-                  onClick={onStart}
-                  className="group h-13 rounded-full bg-[#F7FAF1] pl-6 pr-1.5 font-mono text-[12px] text-[#17201B] shadow-[0_22px_52px_-36px_rgba(0,0,0,0.95)] transition-[background-color,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-white active:scale-[0.96]"
-                >
-                  Start with your name
-                  <span className="grid size-9 place-items-center rounded-full bg-[#DDE85F] transition-[transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-1 group-hover:-translate-y-0.5">
-                    <ArrowRight className="size-4" strokeWidth={1.5} />
-                  </span>
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={scrollToFlow}
-                  className="h-13 rounded-full border-white/16 bg-[#0F1C15]/56 px-6 font-mono text-[12px] text-[#F7FAF1] transition-[background-color,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-[#17201B]/72 hover:text-[#F7FAF1] active:scale-[0.96]"
-                >
-                  See how it works
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="landing-flow" className="px-4 py-24 md:px-7 md:py-28">
-        <div className="mx-auto grid max-w-375 gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
-          <div className="landing-reveal lg:sticky lg:top-8">
-            <p className="mb-5 font-mono text-[10px] uppercase tracking-[0.2em] text-[#53675A]">Built for the messy middle</p>
-            <h2 className="max-w-xl text-[38px] font-semibold leading-[0.98] tracking-[-0.06em] text-balance md:text-[58px]">
-              A landing page first, then the workspace.
-            </h2>
-            <p className="mt-5 max-w-lg text-[15px] leading-7 text-[#53675A]">
-              Visitors get the product promise before they enter the tracker. The dashboard stays one click away, and the name prompt only appears when they choose to start.
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,24,14,0.88)_0%,rgba(7,24,14,0.7)_48%,rgba(7,24,14,0.96)_100%)]" />
+        <div className="relative mx-auto flex min-h-[calc(92dvh-4rem)] max-w-375 flex-col justify-end px-4 pb-7 pt-16 md:px-7 md:pb-10">
+          <div className="landing-reveal max-w-5xl">
+            <p className="mb-4 w-fit border border-white/14 bg-white/8 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-[#DDE85F]">
+              Public demo, starts instantly
             </p>
-          </div>
-
-          <div className="grid gap-4">
-            {landingFlow.map(({ title, description, icon: Icon }, index) => (
-              <div
-                key={title}
-                className="landing-reveal rounded-[30px] border border-[#D8E3D4] bg-[#F9FBF4] p-2 shadow-[0_24px_60px_-52px_rgba(15,28,21,0.7)]"
-                style={{ animationDelay: `${180 + index * 100}ms` }}
-              >
-                <div className="grid gap-5 rounded-3xl bg-white/76 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] md:grid-cols-[auto_1fr_auto] md:items-center">
-                  <div className="grid size-12 place-items-center rounded-2xl bg-[#17201B] text-[#F7FAF1]">
-                    <Icon className="size-5" strokeWidth={1.4} />
-                  </div>
-                  <div>
-                    <p className="text-[20px] font-semibold tracking-[-0.04em] text-[#17201B]">{title}</p>
-                    <p className="mt-2 max-w-2xl text-[14px] leading-6 text-[#53675A]">{description}</p>
-                  </div>
-                  <span className="hidden h-px w-14 bg-[#C9D8C5] md:block" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="px-4 pb-24 md:px-7 md:pb-28">
-        <div className="mx-auto max-w-375 overflow-hidden rounded-[34px] border border-[#17201B] bg-[#17201B] p-3 text-[#F7FAF1] shadow-[0_30px_82px_-62px_rgba(15,28,21,0.88)]">
-          <div className="grid gap-8 rounded-[28px] bg-[#102018] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] lg:grid-cols-[1fr_0.85fr] lg:items-center lg:p-7">
-            <div>
-              <div className="mb-5 flex h-10 w-32 items-center">
-                <Image src="/brand/logo-complete.svg" alt={APP_CONFIG.name} width={154} height={50} className="h-auto w-full brightness-0 invert" />
-              </div>
-              <h2 className="max-w-2xl text-[34px] font-semibold leading-none tracking-[-0.06em] text-balance md:text-[52px]">
-                Start clean. Keep the job hunt readable.
-              </h2>
-              <p className="mt-4 max-w-xl text-[14px] leading-7 text-[#BFD1C4]">
-                The first screen sets context. The workspace handles the details: board stages, resume diagnostics, interview notes, and a daily AI limit.
-              </p>
-            </div>
-
-            <div className="grid gap-3">
-              {["Application board", "Resume PDF import", "Interview prep notes"].map((item, index) => (
-                <div key={item} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/6 p-3">
-                  <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#DDE85F] text-[#17201B]">
-                    <CheckCircle2 className="size-4" strokeWidth={1.5} />
-                  </div>
-                  <p className="text-[14px] font-medium text-[#F7FAF1]">{item}</p>
-                  <span className="ml-auto font-mono text-[11px] text-[#91A99A]">0{index + 1}</span>
-                </div>
-              ))}
+            <h1 className="max-w-5xl text-[46px] font-semibold leading-[0.94] text-balance md:text-[78px] lg:text-[92px]">
+              Keep your job search organized from application to interview.
+            </h1>
+            <p className="mt-6 max-w-2xl text-[16px] leading-7 text-pretty text-[#D7E4DA] md:text-[18px]">
+              Track roles, plan follow-ups, review resumes, and prepare for interviews in one focused workspace. No account required.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button
                 onClick={onStart}
-                className="group mt-2 h-13 rounded-full bg-[#DDE85F] pl-6 pr-1.5 font-mono text-[12px] text-[#17201B] transition-[background-color,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-[#E9F277] active:scale-[0.96]"
+                className="group h-12 rounded-xl bg-[#DDE85F] px-5 font-mono text-[12px] text-[#17201B] shadow-[0_22px_52px_-36px_rgba(221,232,95,0.95)] transition-[background-color,transform] hover:bg-[#E9F277] active:scale-[0.96]"
               >
-                Enter JobPilot
-                <span className="grid size-9 place-items-center rounded-full bg-[#17201B] text-[#F7FAF1] transition-[transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-1 group-hover:-translate-y-0.5">
-                  <ArrowRight className="size-4" strokeWidth={1.5} />
-                </span>
+                Try the demo
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" strokeWidth={1.7} />
+              </Button>
+              <Button
+                variant="outline"
+                onClick={scrollToFlow}
+                className="h-12 rounded-xl border-white/18 bg-[#0F1C15]/58 px-5 font-mono text-[12px] text-[#F7FAF1] transition-[background-color,transform] hover:bg-[#17201B]/78 hover:text-[#F7FAF1] active:scale-[0.96]"
+              >
+                See how it works
+              </Button>
+            </div>
+            <p className="mt-4 text-[13px] text-[#BFD1C4]">No account required. Manual tracking keeps working after AI actions run out.</p>
+          </div>
+
+          <div className="landing-reveal mt-10 grid gap-3 border border-white/12 bg-[#0F1C15]/82 p-3 shadow-[0_28px_90px_-62px_rgba(0,0,0,0.9)] backdrop-blur md:grid-cols-[1.05fr_0.95fr] md:p-4" style={{ animationDelay: "120ms" }}>
+            <div className="grid gap-3">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <div>
+                  <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#91A99A]">Application board</p>
+                  <p className="mt-1 text-[16px] font-semibold text-white">Product Designer at Northstar Labs</p>
+                </div>
+                <span className="bg-[#DDE85F] px-2.5 py-1 font-mono text-[11px] text-[#17201B]">Screening</span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {["Applied", "Screening", "Technical"].map((stage, index) => (
+                  <div key={stage} className="border border-white/10 bg-white/7 p-3">
+                    <p className="font-mono text-[10px] uppercase text-[#BFD1C4]">{stage}</p>
+                    <div className="mt-3 h-2 bg-white/10">
+                      <div className={cn("h-full", index === 1 ? "w-3/4 bg-[#DDE85F]" : "w-1/2 bg-[#91A99A]")} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="border border-white/10 bg-white/7 p-3">
+                  <p className="font-mono text-[10px] uppercase text-[#BFD1C4]">Next follow-up</p>
+                  <p className="mt-2 text-[14px] font-semibold text-white">Email hiring manager Friday</p>
+                </div>
+                <div className="border border-white/10 bg-white/7 p-3">
+                  <p className="font-mono text-[10px] uppercase text-[#BFD1C4]">AI usage</p>
+                  <p className="mt-2 text-[14px] font-semibold text-white">3 actions left today</p>
+                </div>
+              </div>
+            </div>
+            <div className="grid gap-3">
+              <div className="border border-white/10 bg-white/7 p-3">
+                <p className="font-mono text-[10px] uppercase text-[#BFD1C4]">Resume feedback</p>
+                <p className="mt-2 text-[13px] leading-5 text-[#F7FAF1]">Missing keywords: accessibility research, design systems, user interviews.</p>
+              </div>
+              <div className="border border-white/10 bg-white/7 p-3">
+                <p className="font-mono text-[10px] uppercase text-[#BFD1C4]">Interview note</p>
+                <p className="mt-2 text-[13px] leading-5 text-[#F7FAF1]">Practice a story about prioritizing roadmap tradeoffs with engineering.</p>
+              </div>
+              <div className="flex items-center gap-3 border border-[#DDE85F]/30 bg-[#DDE85F]/12 p-3 text-[#F7FAF1]">
+                <ShieldCheck className="size-4 text-[#DDE85F]" />
+                <p className="text-[13px]">Resume and interview tools use AI actions. Tracking does not.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <main>
+        <section className="px-4 py-20 md:px-7 md:py-24">
+          <div className="mx-auto grid max-w-375 gap-10 lg:grid-cols-[0.78fr_1.22fr] lg:items-start">
+            <div className="lg:sticky lg:top-24">
+              <p className="mb-4 font-mono text-[11px] uppercase tracking-[0.16em] text-[#53675A]">Why it exists</p>
+              <h2 className="max-w-xl text-[34px] font-semibold leading-[1] text-balance md:text-[54px]">
+                Job searching has too many loose ends.
+              </h2>
+              <p className="mt-5 max-w-lg text-[15px] leading-7 text-pretty text-[#53675A]">
+                JobPilot keeps the operational parts of the search in one place so the next action is easier to see.
+              </p>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              {landingPainPoints.map(({ title, description, icon: Icon }) => (
+                <article key={title} className="border border-[#D8E3D4] bg-[#F9FBF4] p-4 shadow-[0_18px_46px_-40px_rgba(15,28,21,0.6)]">
+                  <div className="mb-5 grid size-10 place-items-center bg-[#17201B] text-[#F7FAF1]">
+                    <Icon className="size-4.5" strokeWidth={1.6} />
+                  </div>
+                  <h3 className="text-[18px] font-semibold text-[#17201B]">{title}</h3>
+                  <p className="mt-2 text-[13px] leading-6 text-pretty text-[#53675A]">{description}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="features" className="border-y border-[#D8E3D4] bg-[#E9EFE4] px-4 py-20 md:px-7 md:py-24">
+          <div className="mx-auto max-w-375">
+            <div className="mb-10 max-w-2xl">
+              <p className="mb-4 font-mono text-[11px] uppercase tracking-[0.16em] text-[#53675A]">Product preview</p>
+              <h2 className="text-[34px] font-semibold leading-[1] text-balance md:text-[54px]">
+                The workspace is built around real job-search records.
+              </h2>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="border border-[#C7D5C2] bg-[#F9FBF4] p-3 shadow-[0_24px_70px_-56px_rgba(15,28,21,0.75)]">
+                <div className="border border-[#D8E3D4] bg-white p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#D8E3D4] pb-3">
+                    <div>
+                      <p className="font-mono text-[11px] uppercase text-[#53675A]">Pipeline</p>
+                      <p className="mt-1 text-[18px] font-semibold text-[#17201B]">Track every role in your pipeline.</p>
+                    </div>
+                    <Button onClick={onStart} className="h-10 rounded-xl bg-[#17201B] px-4 font-mono text-[12px] text-[#F7FAF1] active:scale-[0.96]">
+                      Add application
+                    </Button>
+                  </div>
+                  <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    {[
+                      ["Wishlist", "Design Systems Lead", "Save job URL and salary range."],
+                      ["Applied", "Frontend Engineer", "Follow up on June 7."],
+                      ["Interview", "Product Designer", "Prepare portfolio story."],
+                    ].map(([stage, role, note]) => (
+                      <div key={role} className="border border-[#D8E3D4] bg-[#F4F8EF] p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-mono text-[10px] uppercase text-[#53675A]">{stage}</span>
+                          <span className="size-2 bg-[#1B7A4E]" />
+                        </div>
+                        <p className="mt-3 text-[14px] font-semibold text-[#17201B]">{role}</p>
+                        <p className="mt-2 text-[12px] leading-5 text-[#53675A]">{note}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="grid gap-4">
+                <div className="border border-[#D8E3D4] bg-[#F9FBF4] p-4 shadow-[0_18px_46px_-40px_rgba(15,28,21,0.6)]">
+                  <p className="font-mono text-[11px] uppercase text-[#53675A]">Resume analysis result</p>
+                  <div className="mt-4 flex items-center gap-4">
+                    <div className="grid size-16 place-items-center bg-[#17201B] font-mono text-[22px] font-semibold text-[#DDE85F]">78</div>
+                    <p className="text-[13px] leading-6 text-[#53675A]">Good baseline. Add evidence for accessibility audits and stakeholder research before applying.</p>
+                  </div>
+                </div>
+                <div className="border border-[#D8E3D4] bg-[#F9FBF4] p-4 shadow-[0_18px_46px_-40px_rgba(15,28,21,0.6)]">
+                  <p className="font-mono text-[11px] uppercase text-[#53675A]">Interview question note</p>
+                  <p className="mt-3 text-[14px] font-semibold text-[#17201B]">Tell me about a time you improved a hiring funnel.</p>
+                  <p className="mt-2 text-[13px] leading-6 text-[#53675A]">Saved note: explain the metrics, tradeoffs, and what changed after launch.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="px-4 py-20 md:px-7 md:py-24">
+          <div className="mx-auto max-w-375">
+            <div className="mb-10 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+              <div>
+                <p className="mb-4 font-mono text-[11px] uppercase tracking-[0.16em] text-[#53675A]">Features</p>
+                <h2 className="max-w-2xl text-[34px] font-semibold leading-[1] text-balance md:text-[54px]">
+                  Focused tools for application tracking.
+                </h2>
+              </div>
+              <p className="max-w-md text-[14px] leading-6 text-pretty text-[#53675A]">
+                Every feature is tied to a job-search task: tracking, follow-up, resume review, interview prep, and local demo control.
+              </p>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {landingFeatures.map(([title, description, Icon]) => (
+                <article key={title} className="border border-[#D8E3D4] bg-[#F9FBF4] p-4 shadow-[0_18px_46px_-40px_rgba(15,28,21,0.55)]">
+                  <div className="mb-5 flex items-center justify-between">
+                    <div className="grid size-10 place-items-center bg-[#E2ECD9] text-[#17201B]">
+                      <Icon className="size-4.5" strokeWidth={1.6} />
+                    </div>
+                    <span className="h-px w-12 bg-[#C7D5C2]" />
+                  </div>
+                  <h3 className="text-[17px] font-semibold text-[#17201B]">{title}</h3>
+                  <p className="mt-2 text-[13px] leading-6 text-pretty text-[#53675A]">{description}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="how-it-works" className="border-y border-[#D8E3D4] bg-[#17201B] px-4 py-20 text-[#F7FAF1] md:px-7 md:py-24">
+          <div className="mx-auto max-w-375">
+            <div className="mb-10 max-w-2xl">
+              <p className="mb-4 font-mono text-[11px] uppercase tracking-[0.16em] text-[#DDE85F]">How it works</p>
+              <h2 className="text-[34px] font-semibold leading-[1] text-balance md:text-[54px]">
+                Start with a name. Add roles as they happen.
+              </h2>
+            </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              {howItWorks.map(([title, description], index) => (
+                <article key={title} className="border border-white/12 bg-white/7 p-4">
+                  <span className="font-mono text-[12px] text-[#DDE85F] tabular-nums">0{index + 1}</span>
+                  <h3 className="mt-8 text-[20px] font-semibold text-white">{title}</h3>
+                  <p className="mt-2 text-[13px] leading-6 text-pretty text-[#BFD1C4]">{description}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="px-4 py-20 md:px-7 md:py-24">
+          <div className="mx-auto max-w-375 border border-[#17201B] bg-[#17201B] p-4 text-[#F7FAF1] shadow-[0_30px_82px_-62px_rgba(15,28,21,0.88)] md:p-6">
+            <div className="grid gap-8 border border-white/10 bg-[#102018] p-5 md:grid-cols-[1fr_auto] md:items-center md:p-7">
+              <div>
+                <h2 className="max-w-2xl text-[34px] font-semibold leading-none text-balance md:text-[52px]">
+                  Start organizing your job search.
+                </h2>
+                <p className="mt-4 max-w-xl text-[14px] leading-7 text-pretty text-[#BFD1C4]">
+                  No account required. Try the public demo instantly.
+                </p>
+              </div>
+              <Button
+                onClick={onStart}
+                className="h-12 rounded-xl bg-[#DDE85F] px-5 font-mono text-[12px] text-[#17201B] transition-[background-color,transform] hover:bg-[#E9F277] active:scale-[0.96]"
+              >
+                Try the demo
+                <ArrowRight className="size-4" />
               </Button>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
     </div>
   );
 }
@@ -1129,29 +1319,31 @@ function Navigation({
   ] as const;
 
   return (
-    <div className="flex h-full min-h-dvh flex-col">
+    <nav aria-label="Workspace" className="flex h-full min-h-dvh flex-col">
       <div className="relative overflow-hidden border-b border-white/10 p-5">
         <div className="relative w-full pr-3">
           <Image src="/brand/logo-complete.svg" alt={APP_CONFIG.name} width={214} height={69} className="h-auto w-full brightness-0 invert" priority />
         </div>
         <div className="relative mt-4">
           <p className="text-[13px] font-semibold tracking-[-0.01em] text-[#EAF4EC]">{APP_CONFIG.workspaceSubtitle}</p>
+          <p className="mt-1 text-[12px] leading-5 text-[#91A99A]">Track roles, follow-ups, resumes, and interviews.</p>
         </div>
         <Button
           onClick={onAdd}
-          className="relative mt-5 h-11 w-full rounded-2xl bg-[#DDE85F] font-mono text-[12px] text-[#17201B] shadow-[0_18px_42px_-26px_rgba(221,232,95,0.85)] hover:bg-[#E9F277] active:scale-[0.96]"
+          className="relative mt-5 h-11 w-full rounded-lg bg-[#DDE85F] font-mono text-[12px] text-[#17201B] shadow-[0_18px_42px_-26px_rgba(221,232,95,0.85)] transition-[background-color,transform] hover:bg-[#E9F277] active:scale-[0.96]"
         >
           <Plus className="size-4" />
           Add application
         </Button>
       </div>
-      <div className="flex-1 py-2">
+      <div className="flex-1 py-3">
         {items.map(([id, Icon, label]) => (
           <Button
             key={id}
             variant="ghost"
+            aria-current={view === id ? "page" : undefined}
             className={cn(
-              "mx-3 h-11 w-[calc(100%-1.5rem)] justify-start gap-3 rounded-2xl px-3 text-[14px] font-medium text-[#A9B8AE] transition-[background-color,color,transform] duration-200 hover:bg-white/8 hover:text-[#F7FAF1] active:scale-[0.96]",
+              "mx-3 h-11 w-[calc(100%-1.5rem)] justify-start gap-3 rounded-lg px-3 text-[14px] font-medium text-[#A9B8AE] transition-[background-color,color,transform] duration-200 hover:bg-white/8 hover:text-[#F7FAF1] active:scale-[0.96]",
               view === id &&
                 "bg-[#F7FAF1] font-semibold text-[#17201B] shadow-[0_18px_44px_-34px_rgba(0,0,0,0.85)] hover:bg-[#F7FAF1] hover:text-[#17201B]",
             )}
@@ -1166,13 +1358,14 @@ function Navigation({
         ))}
       </div>
       <div className="border-t border-white/10 p-4">
-        <div className="rounded-2xl border border-white/10 bg-white/6 p-4 backdrop-blur">
+        <div className="border border-white/10 bg-white/6 p-4 backdrop-blur">
           <p className="font-mono text-[11px] font-semibold uppercase text-[#EAF4EC]">{APP_CONFIG.guestModeTitle}</p>
-          <p className="mt-1 text-[13px] leading-5 text-[#91A99A]">No login. {formatAiActionLimit(quota.limit)} reset daily.</p>
+          <p className="mt-1 text-[13px] leading-5 text-[#91A99A]">{formatAiActionsLeft(quota)}.</p>
+          <p className="mt-1 text-[12px] leading-5 text-[#91A99A]">Resume analysis and interview generation use AI actions. Manual tracking does not.</p>
           <Progress value={getQuotaProgressValue(quota, "remaining")} className="mt-4 h-1.5 bg-white/10 **:data-[slot=progress-indicator]:bg-[#DDE85F]" />
         </div>
       </div>
-    </div>
+    </nav>
   );
 }
 
@@ -1213,7 +1406,7 @@ function TopBar({
         {view === "applications" ? (
           <label
             htmlFor={searchId}
-            className="hidden h-11 w-full max-w-md items-center rounded-2xl border border-[#DDE6D7] bg-white/82 px-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] md:flex"
+            className="hidden h-11 w-full max-w-md items-center rounded-lg border border-[#DDE6D7] bg-white/88 px-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] md:flex"
           >
             <Search className="mr-2 size-4 text-[#53675A]" />
             <span className="sr-only">Search applications</span>
@@ -1221,19 +1414,28 @@ function TopBar({
               id={searchId}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search applications..."
+              placeholder="Search applications by role, company, source, or status"
               className="h-9 border-0 bg-transparent px-0 text-[13px] shadow-none focus-visible:ring-0"
             />
+            {search ? (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="ml-2 font-mono text-[11px] text-[#53675A] underline-offset-4 hover:text-[#17201B] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B7A4E]"
+              >
+                Clear
+              </button>
+            ) : null}
           </label>
         ) : null}
         <div className="min-w-0 flex-1 md:hidden">
           <p className="truncate text-[14px] font-medium">Good to see you{guest ? `, ${guest.name}` : ""}</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <p className="hidden font-mono text-[11px] text-[#53675A] tabular-nums md:block">
-            AI quota {quota.remaining}/{quota.limit}
+          <p className="hidden max-w-44 text-right font-mono text-[11px] leading-4 text-[#53675A] tabular-nums md:block">
+            {formatAiActionsLeft(quota)}
           </p>
-          <div className="grid size-10 place-items-center rounded-2xl border border-[#DDE6D7] bg-[#17201B] font-mono text-[11px] font-semibold text-[#F7FAF1] shadow-[0_16px_30px_-22px_rgba(15,28,21,0.8)]">
+          <div aria-label={guest ? `Workspace for ${guest.name}` : "Guest workspace"} className="grid size-10 place-items-center rounded-lg border border-[#DDE6D7] bg-[#17201B] font-mono text-[11px] font-semibold text-[#F7FAF1] shadow-[0_16px_30px_-22px_rgba(15,28,21,0.8)]">
             {guest ? initials(guest.name) || "JP" : "JP"}
           </div>
         </div>
@@ -1257,101 +1459,113 @@ function DashboardView({
   setSelectedApplicationId: (id: string) => void;
   onAdd: () => void;
 }) {
+  const activeApplications = Math.max(0, data.analytics.totalApplications - data.analytics.byStatus.Offer - data.analytics.byStatus.Rejected);
+  const interviewCount = data.analytics.byStatus["Technical Interview"] + data.analytics.byStatus["HR Interview"];
+  const checklistState = [
+    data.applications.length > 0,
+    data.applications.some((application) => Boolean(application.followUpDate)),
+    data.analyses.length > 0,
+    data.questions.length > 0,
+  ];
   const metrics = [
-    ["Applications", data.analytics.totalApplications, Send, `${data.analytics.applicationsThisWeek} sent this week`],
-    ["Interviews", data.analytics.byStatus["Technical Interview"] + data.analytics.byStatus["HR Interview"], BriefcaseBusiness, "active conversations"],
-    ["Offer signal", `${data.analytics.offerRate}%`, CheckCircle2, `${data.analytics.rejectedCount} closed rejects`],
+    ["Active applications", activeApplications, BriefcaseBusiness, `${data.analytics.applicationsThisWeek} added this week`],
+    ["Upcoming follow-ups", upcomingFollowUps.length, CalendarClock, `${data.analytics.overdueFollowUps} overdue`],
+    ["Interviews", interviewCount, ClipboardList, "technical and HR stages"],
+    ["Offers or closed", data.analytics.byStatus.Offer + data.analytics.rejectedCount, CheckCircle2, `${data.analytics.offerRate}% offer rate`],
   ] as const;
   const maxStatus = Math.max(1, ...APPLICATION_STATUSES.map((status) => data.analytics.byStatus[status]));
-  const nextFollowUp = upcomingFollowUps[0];
 
   return (
     <div className="grid min-w-0 gap-5">
-      <section className="relative overflow-hidden rounded-4xl bg-[#12221A] p-5 text-[#F7FAF1] shadow-[0_28px_80px_-54px_rgba(7,24,14,0.9)] md:p-7">
-        <Image
-          src="/brand/logo-mark.svg"
-          alt=""
-          width={220}
-          height={220}
-          className="pointer-events-none absolute -right-8 -top-10 w-44 opacity-[0.08] md:w-64"
-        />
-        <div className="relative grid gap-6 xl:grid-cols-[1.1fr_0.9fr] xl:items-end">
+      <section className="border border-[#D8E3D4] bg-[#F9FBF4] p-4 shadow-[0_24px_70px_-56px_rgba(15,28,21,0.75)] md:p-5">
+        <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
           <div>
-            <h1 className="max-w-2xl text-[40px] font-semibold leading-[0.96] tracking-[-0.06em] text-wrap md:text-[64px]">
-              Make every application easier to follow.
+            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.14em] text-[#53675A]">Dashboard</p>
+            <h1 className="max-w-2xl text-[34px] font-semibold leading-[1] text-balance text-[#17201B] md:text-[48px]">
+              Your job search at a glance.
             </h1>
-            <p className="mt-5 max-w-xl text-[15px] leading-7 text-[#BFD1C4]">
-              Track each opportunity, catch quiet follow-ups, and use AI only where it helps you make the next decision.
+            <p className="mt-3 max-w-2xl text-[14px] leading-6 text-pretty text-[#53675A]">
+              See open roles, upcoming follow-ups, interview progress, and AI usage in one place.
             </p>
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <Button
-                onClick={onAdd}
-                className="h-12 rounded-2xl bg-[#DDE85F] px-5 font-mono text-[12px] text-[#17201B] shadow-[0_18px_42px_-26px_rgba(221,232,95,0.85)] hover:bg-[#E9F277] active:scale-[0.96]"
-              >
-                <Plus className="size-4" />
-                Add application
-              </Button>
-              <Button
-                variant="outline"
-                className="h-12 rounded-2xl border-white/15 bg-white/8 px-5 font-mono text-[12px] text-[#F7FAF1] hover:bg-white/14 hover:text-[#F7FAF1] active:scale-[0.96]"
-                onClick={() => setView("resume")}
-              >
-                Run resume scan
-              </Button>
-            </div>
           </div>
-
-          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-            {metrics.map(([label, value, Icon, helper], index) => (
-              <div
-                key={label}
-                className={cn(
-                  "rounded-3xl border border-white/10 bg-white/7.5 p-4 backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]",
-                  index === 1 && "bg-[#DDE85F] text-[#17201B]",
-                )}
-              >
-                <div className="flex items-start justify-between">
-                  <p className={cn("font-mono text-[11px] uppercase text-[#BFD1C4]", index === 1 && "text-[#39521F]")}>{label}</p>
-                  <Icon className={cn("size-4 text-[#DDE85F]", index === 1 && "text-[#17201B]")} />
-                </div>
-                <div className="mt-4">
-                  <p className="font-mono text-[34px] font-semibold leading-none tabular-nums">{value}</p>
-                  <p className={cn("mt-2 text-[12px] text-[#BFD1C4]", index === 1 && "text-[#39521F]")}>{helper}</p>
-                </div>
-              </div>
-            ))}
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              onClick={onAdd}
+              className="h-11 rounded-lg bg-[#17201B] px-4 font-mono text-[12px] text-[#F7FAF1] shadow-[0_18px_42px_-30px_rgba(15,28,21,0.9)] transition-[background-color,transform] hover:bg-[#2A4033] active:scale-[0.96]"
+            >
+              <Plus className="size-4" />
+              Add application
+            </Button>
+            <Button
+              variant="outline"
+              className="h-11 rounded-lg border-[#C7D5C2] bg-white px-4 font-mono text-[12px] text-[#17201B] transition-[background-color,transform] hover:bg-[#F4F8EF] active:scale-[0.96]"
+              onClick={() => setView("resume")}
+            >
+              <FileSearch className="size-4" />
+              Review resume
+            </Button>
           </div>
         </div>
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {metrics.map(([label, value, Icon, helper]) => (
+          <section key={label} className="border border-[#D8E3D4] bg-[#F9FBF4] p-4 shadow-[0_18px_46px_-40px_rgba(15,28,21,0.6)]">
+            <div className="flex items-start justify-between gap-3">
+              <p className="font-mono text-[11px] uppercase text-[#53675A]">{label}</p>
+              <Icon className="size-4 text-[#1B7A4E]" />
+            </div>
+            <p className="mt-5 font-mono text-[34px] font-semibold leading-none text-[#17201B] tabular-nums">{value}</p>
+            <p className="mt-2 text-[12px] leading-5 text-[#53675A]">{helper}</p>
+          </section>
+        ))}
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
         <div className="grid gap-4">
-          <section className="overflow-hidden rounded-[28px] border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-48px_rgba(15,28,21,0.7)]">
-            <SectionHeader title="Route pressure" />
-            <div className="p-5 pt-8">
+          <section className="overflow-hidden border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-48px_rgba(15,28,21,0.7)]">
+            <SectionHeader title="Pipeline by stage" action={`${data.analytics.totalApplications} total`} icon={<BarChart3 className="size-4 text-[#53675A]" />} />
+            <div className="grid gap-4 p-4">
               <div className="flex h-44 items-end gap-2">
                 {APPLICATION_STATUSES.map((status) => {
                   const count = data.analytics.byStatus[status];
                   return (
-                    <div key={status} className="group flex h-full flex-1 flex-col justify-end">
-                      <div
+                    <button
+                      type="button"
+                      key={status}
+                      className="group flex h-full flex-1 flex-col justify-end focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B7A4E]"
+                      onClick={() => setView("applications")}
+                      aria-label={`${status}: ${count} applications`}
+                    >
+                      <span
                         className={cn(
-                          "w-full rounded-t-2xl bg-[#DBE5D6] transition-[height,background-color,transform] duration-300 group-hover:-translate-y-1 group-hover:bg-[#BFD1C4]",
+                          "block w-full bg-[#DBE5D6] transition-[height,background-color,transform] duration-300 group-hover:-translate-y-1 group-hover:bg-[#BFD1C4]",
                           status === "Offer" && "bg-[#1B7A4E]",
                           status === "Technical Interview" && "bg-[#D26F48]",
                           status === "Screening" && "bg-[#DDE85F]",
                         )}
                         style={{ height: `${Math.max(6, (count / maxStatus) * 100)}%` }}
                       />
-                      <div className="mt-3 truncate text-center font-mono text-[11px] text-[#53675A]">{statusMeta[status].label}</div>
-                    </div>
+                      <span className="mt-3 truncate text-center font-mono text-[11px] text-[#53675A]">{statusMeta[status].label}</span>
+                    </button>
                   );
                 })}
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {APPLICATION_STATUSES.map((status) => (
+                  <div key={status} className="flex items-center justify-between border border-[#D8E3D4] bg-white px-3 py-2">
+                    <span className="flex items-center gap-2 text-[12px] text-[#53675A]">
+                      <span className={cn("size-2", statusMeta[status].dot)} />
+                      {status}
+                    </span>
+                    <span className="font-mono text-[12px] text-[#17201B] tabular-nums">{data.analytics.byStatus[status]}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-[28px] border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-48px_rgba(15,28,21,0.7)]">
+          <section className="overflow-hidden border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-48px_rgba(15,28,21,0.7)]">
             <SectionHeader title="Recent movement" />
             <div className="divide-y divide-[#DDE6D7]">
               {data.applications.slice(0, 4).map((application) => (
@@ -1378,35 +1592,44 @@ function DashboardView({
                 </Button>
               ))}
               {!data.applications.length ? (
-                <EmptyState title="No applications added yet" description="Your board is a blank slate. Add your first job application to get started." />
+                <div className="p-3">
+                  <EmptyState
+                    title="No applications yet"
+                    description="Add your first role to start building your pipeline."
+                    actionLabel="Add application"
+                    onAction={onAdd}
+                  />
+                </div>
               ) : null}
             </div>
           </section>
         </div>
 
         <div className="grid gap-4">
-          <section className="relative overflow-hidden rounded-[28px] border border-[#17201B] bg-[#17201B] text-[#F7FAF1] shadow-[0_24px_60px_-42px_rgba(15,28,21,0.75)]">
-            <SectionHeader title="AI support" icon={<Bot className="size-4 text-[#DDE85F]" />} tone="dark" />
+          <section className="relative overflow-hidden border border-[#17201B] bg-[#17201B] text-[#F7FAF1] shadow-[0_24px_60px_-42px_rgba(15,28,21,0.75)]">
+            <SectionHeader title="AI usage" icon={<ShieldCheck className="size-4 text-[#DDE85F]" />} tone="dark" />
             <div className="relative z-10 flex items-center gap-4 p-3">
               <QuotaRing quota={quota} />
               <div>
-                <p className="text-[14px] font-semibold">Ready when you need support</p>
-                <p className="mt-1 text-[12px] leading-5 text-[#BFD1C4]">Use {quota.remaining} more AI actions today.</p>
+                <p className="text-[14px] font-semibold">{formatAiActionsLeft(quota)}</p>
+                <p className="mt-1 text-[12px] leading-5 text-[#BFD1C4]">
+                  Resume analysis and interview question generation use AI actions. Manual tracking does not.
+                </p>
               </div>
             </div>
             <div className="relative z-10 p-3 pt-0">
               <Button
                 variant="outline"
-                className="h-10 w-full rounded-2xl border-white/12 bg-white/8 font-mono text-[12px] text-[#F7FAF1] hover:bg-white/14 hover:text-[#F7FAF1] active:scale-[0.96]"
+                className="h-10 w-full rounded-lg border-white/12 bg-white/8 font-mono text-[12px] text-[#F7FAF1] transition-[background-color,transform] hover:bg-white/14 hover:text-[#F7FAF1] active:scale-[0.96]"
                 onClick={() => setView("resume")}
               >
-                Scan resume
+                Review resume
               </Button>
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-[28px] border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-48px_rgba(15,28,21,0.7)]">
-            <SectionHeader title={nextFollowUp ? "Next move" : "Action items"} />
+          <section className="overflow-hidden border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-48px_rgba(15,28,21,0.7)]">
+            <SectionHeader title="Next actions" icon={<ListChecks className="size-4 text-[#53675A]" />} />
             <div className="grid gap-2 p-3">
               {upcomingFollowUps.length ? (
                 upcomingFollowUps.map((application) => (
@@ -1430,8 +1653,32 @@ function DashboardView({
                   </Button>
                 ))
               ) : (
-                <EmptyState title="No follow-ups scheduled" description="Add dates to make action items visible." />
+                <EmptyState
+                  title="No follow-ups scheduled"
+                  description="Add follow-up dates to roles so JobPilot can surface your next actions."
+                  actionLabel="Open applications"
+                  onAction={() => setView("applications")}
+                />
               )}
+            </div>
+          </section>
+
+          <section className="overflow-hidden border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-48px_rgba(15,28,21,0.7)]">
+            <SectionHeader title="First-time checklist" icon={<CheckCircle2 className="size-4 text-[#53675A]" />} />
+            <div className="grid gap-2 p-3">
+              {firstTimeChecklist.map((item, index) => (
+                <button
+                  type="button"
+                  key={item}
+                  onClick={() => setView(index < 2 ? "applications" : index === 2 ? "resume" : "interviews")}
+                  className="flex items-center gap-3 border border-[#D8E3D4] bg-white px-3 py-2 text-left transition-[background-color,transform] hover:bg-[#F4F8EF] active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B7A4E]"
+                >
+                  <span className={cn("grid size-6 place-items-center border text-[11px]", checklistState[index] ? "border-[#1B7A4E] bg-[#1B7A4E] text-white" : "border-[#BFD1C4] text-[#53675A]")}>
+                    {checklistState[index] ? <CheckCircle2 className="size-3.5" /> : index + 1}
+                  </span>
+                  <span className="text-[13px] font-medium text-[#17201B]">{item}</span>
+                </button>
+              ))}
             </div>
           </section>
         </div>
@@ -1477,20 +1724,21 @@ function ApplicationsView({
 }) {
   return (
     <div className="grid min-w-0 gap-5">
-      <section className="relative overflow-hidden rounded-[30px] border border-[#D8E3D4] bg-[#F9FBF4] p-4 shadow-[0_24px_70px_-56px_rgba(15,28,21,0.75)] md:p-5">
-        <div className="absolute inset-y-0 right-0 hidden w-1/3 bg-[#F4F8EF] md:block" />
+      <section className="relative overflow-hidden border border-[#D8E3D4] bg-[#F9FBF4] p-4 shadow-[0_24px_70px_-56px_rgba(15,28,21,0.75)] md:p-5">
         <div className="relative flex flex-col justify-between gap-5 xl:flex-row xl:items-end">
           <div className="max-w-2xl">
-            <h1 className="text-[34px] font-semibold leading-[0.98] tracking-[-0.06em] text-[#17201B] md:text-[48px]">
-              Application board with pressure you can read.
+            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.14em] text-[#53675A]">Applications</p>
+            <h1 className="text-[34px] font-semibold leading-[1] text-balance text-[#17201B] md:text-[48px]">
+              Track every role in your pipeline.
             </h1>
-            <p className="mt-3 max-w-xl text-[14px] leading-6 text-[#53675A]">
-              Sort the pipeline by stage, source, and momentum without turning your job hunt into manual tracking work.
+            <p className="mt-3 max-w-xl text-[14px] leading-6 text-pretty text-[#53675A]">
+              Save company details, status, salary, source, application date, follow-up date, job URL, and notes.
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row xl:items-center">
             <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as ApplicationStatus | "All")}>
-              <SelectTrigger aria-label="Filter by application status" className="h-11 rounded-2xl border-[#D8E3D4] bg-white/88 text-[13px] shadow-[0_14px_30px_-26px_rgba(15,28,21,0.55)] sm:w-48">
+              <SelectTrigger aria-label="Filter by application status" className="h-11 rounded-lg border-[#D8E3D4] bg-white/88 text-[13px] shadow-[0_14px_30px_-26px_rgba(15,28,21,0.55)] sm:w-48">
+                <Filter className="mr-2 size-4 text-[#53675A]" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1503,7 +1751,7 @@ function ApplicationsView({
               </SelectContent>
             </Select>
             <Select value={sourceFilter} onValueChange={setSourceFilter}>
-              <SelectTrigger aria-label="Filter by application source" className="h-11 rounded-2xl border-[#D8E3D4] bg-white/88 text-[13px] shadow-[0_14px_30px_-26px_rgba(15,28,21,0.55)] sm:w-44">
+              <SelectTrigger aria-label="Filter by application source" className="h-11 rounded-lg border-[#D8E3D4] bg-white/88 text-[13px] shadow-[0_14px_30px_-26px_rgba(15,28,21,0.55)] sm:w-44">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1517,15 +1765,15 @@ function ApplicationsView({
             </Select>
             <Sheet open={addSheetOpen} onOpenChange={setAddSheetOpen}>
               <SheetTrigger asChild>
-                <Button className="h-11 rounded-2xl bg-[#17201B] px-4 font-mono text-[12px] text-[#F7FAF1] shadow-[0_18px_42px_-30px_rgba(15,28,21,0.9)] hover:bg-[#2A4033] active:scale-[0.96]">
+                <Button className="h-11 rounded-lg bg-[#17201B] px-4 font-mono text-[12px] text-[#F7FAF1] shadow-[0_18px_42px_-30px_rgba(15,28,21,0.9)] transition-[background-color,transform] hover:bg-[#2A4033] active:scale-[0.96]">
                   <Plus className="size-4" />
                   Add application
                 </Button>
               </SheetTrigger>
               <SheetContent className="w-full overflow-y-auto border-[#D8E3D4] bg-[#F8FAF3] sm:max-w-3xl xl:max-w-4xl">
                 <SheetHeader className="border-b border-[#D8E3D4] px-5 py-5">
-                  <SheetTitle className="tracking-[-0.04em]">Add application</SheetTitle>
-                  <SheetDescription>Capture the opportunity while the details are fresh.</SheetDescription>
+                  <SheetTitle>Add application</SheetTitle>
+                  <SheetDescription>Company, role, and status are required. Everything else can be filled in as the role becomes clearer.</SheetDescription>
                 </SheetHeader>
                 <ApplicationForm
                   form={form}
@@ -1533,6 +1781,7 @@ function ApplicationsView({
                   errors={errors}
                   formError={formError}
                   onSave={createApplication}
+                  onCancel={() => setAddSheetOpen(false)}
                   busy={busyAction === "create-application"}
                 />
               </SheetContent>
@@ -1541,7 +1790,14 @@ function ApplicationsView({
         </div>
       </section>
 
-      <ScrollArea className="h-[calc(100dvh-244px)] min-h-140 w-full max-w-full overflow-hidden rounded-[28px] border border-[#D8E3D4] bg-[#E7EEE3] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
+      {applications.length === 0 && (statusFilter !== "All" || sourceFilter !== "All") ? (
+        <EmptyState
+          title="No applications match these filters"
+          description="Change the status or source filter to see more roles."
+        />
+      ) : null}
+
+      <ScrollArea className="h-[calc(100dvh-244px)] min-h-140 w-full max-w-full overflow-hidden border border-[#D8E3D4] bg-[#E7EEE3] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
         <div className="flex h-full min-w-max items-start gap-4 pb-4 pr-4">
           {APPLICATION_STATUSES.map((status) => {
             const laneItems = applications.filter((application) => application.status === status);
@@ -1549,14 +1805,14 @@ function ApplicationsView({
               <div
                 key={status}
                 className={cn(
-                  "flex h-full w-81 shrink-0 flex-col overflow-hidden rounded-3xl border bg-[#F9FBF4] shadow-[0_18px_44px_-36px_rgba(15,28,21,0.65)]",
+                  "flex h-full w-81 shrink-0 flex-col overflow-hidden border bg-[#F9FBF4] shadow-[0_18px_44px_-36px_rgba(15,28,21,0.65)]",
                   statusMeta[status].border,
                 )}
               >
                 <div className={cn("h-1.5 w-full", statusMeta[status].stripe)} />
                 <div className="flex min-h-14 items-center justify-between border-b border-[#D8E3D4] bg-white/58 px-3">
                   <div className="flex items-center gap-2">
-                    <span className={cn("size-2.5 rounded-full shadow-[0_0_0_4px_rgba(255,255,255,0.9)]", statusMeta[status].dot)} />
+                    <span className={cn("size-2.5 shadow-[0_0_0_4px_rgba(255,255,255,0.9)]", statusMeta[status].dot)} />
                     <p className="text-[14px] font-semibold tracking-[-0.02em] text-[#18181B]">{status}</p>
                   </div>
                   <span className="font-mono text-[11px] text-[#53675A] tabular-nums">{laneItems.length}</span>
@@ -1573,8 +1829,9 @@ function ApplicationsView({
                       />
                     ))
                   ) : (
-                    <div className="rounded-[20px] border border-dashed border-[#BFD1C4] bg-white/55 p-4 text-[13px] leading-5 text-[#53675A]">
-                      No cards in this stage yet. Move an application here when the status changes.
+                    <div className="border border-dashed border-[#BFD1C4] bg-white/60 p-4 text-[13px] leading-5 text-[#53675A]">
+                      <p className="font-semibold text-[#17201B]">No roles here yet</p>
+                      <p className="mt-1">Use the status control on a card to move it into {status} when the stage changes.</p>
                     </div>
                   )}
                 </div>
@@ -1586,7 +1843,7 @@ function ApplicationsView({
               variant="outline"
               size="icon"
               aria-label="Add application"
-              className="size-10 rounded-2xl border-dashed border-[#91A99A] bg-white/70 text-[#53675A] hover:bg-white"
+              className="size-10 rounded-lg border-dashed border-[#91A99A] bg-white/70 text-[#53675A] hover:bg-white"
               onClick={() => setAddSheetOpen(true)}
             >
               <Plus className="size-4" />
@@ -1605,6 +1862,7 @@ function ApplicationForm({
   errors,
   formError,
   onSave,
+  onCancel,
   busy,
 }: {
   form: ApplicationFormState;
@@ -1612,54 +1870,73 @@ function ApplicationForm({
   errors: ApplicationFormErrors;
   formError: string | null;
   onSave: () => void;
+  onCancel: () => void;
   busy: boolean;
 }) {
   const update = (key: keyof ApplicationFormState, value: string) => setForm({ ...form, [key]: value });
   const statusId = useId();
   const notesId = useId();
   const notesErrorId = useId();
+  const saveDisabled = busy || !form.companyName.trim() || !form.role.trim() || !form.status;
 
   return (
-    <div className="grid gap-5 px-5 pb-6 pt-2">
+    <div className="grid gap-6 px-5 pb-6 pt-2">
       {formError ? <ErrorNotice message={formError} /> : null}
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Field
-          label="Company"
-          value={form.companyName}
-          onChange={(value) => update("companyName", value)}
-          placeholder="Company name"
-          error={errors.companyName}
-        />
-        <Field
-          label="Role"
-          value={form.role}
-          onChange={(value) => update("role", value)}
-          placeholder="Target role"
-          error={errors.role}
-        />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Location" value={form.location} onChange={(value) => update("location", value)} placeholder="Remote" error={errors.location} />
-        <Field
-          label="Salary"
-          value={form.salary}
-          onChange={(value) => update("salary", sanitizeSalary(value))}
-          placeholder="118000"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          error={errors.salary}
-        />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Source" value={form.sourcePlatform} onChange={(value) => update("sourcePlatform", value)} placeholder="Referral" error={errors.sourcePlatform} />
-        <Field label="Job URL" value={form.jobUrl} onChange={(value) => update("jobUrl", value)} placeholder="https://..." error={errors.jobUrl} />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Application date" type="date" value={form.applicationDate} onChange={(value) => update("applicationDate", value)} error={errors.applicationDate} />
+
+      <section className="grid gap-4" aria-labelledby="role-details-heading">
+        <div>
+          <h3 id="role-details-heading" className="text-[15px] font-semibold text-[#17201B]">Role details</h3>
+          <p className="mt-1 text-[12px] leading-5 text-[#53675A]">Start with the required company and role. Add optional details when useful.</p>
+        </div>
+        <div className="grid gap-4 xl:grid-cols-2">
+          <Field
+            label="Company"
+            required
+            value={form.companyName}
+            onChange={(value) => update("companyName", value)}
+            placeholder="Acme Studio"
+            error={errors.companyName}
+          />
+          <Field
+            label="Role"
+            required
+            value={form.role}
+            onChange={(value) => update("role", value)}
+            placeholder="Product Designer"
+            error={errors.role}
+          />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Location" value={form.location} onChange={(value) => update("location", value)} placeholder="Remote, New York, or hybrid" error={errors.location} />
+          <Field
+            label="Salary"
+            value={form.salary}
+            onChange={(value) => update("salary", sanitizeSalary(value))}
+            placeholder="120000"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            error={errors.salary}
+          />
+        </div>
+      </section>
+
+      <section className="grid gap-4" aria-labelledby="source-dates-heading">
+        <div>
+          <h3 id="source-dates-heading" className="text-[15px] font-semibold text-[#17201B]">Source and dates</h3>
+          <p className="mt-1 text-[12px] leading-5 text-[#53675A]">These fields help the dashboard show follow-ups and keep the origin of the role clear.</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Source" value={form.sourcePlatform} onChange={(value) => update("sourcePlatform", value)} placeholder="LinkedIn, referral, company site" error={errors.sourcePlatform} />
+          <Field label="Job URL" value={form.jobUrl} onChange={(value) => update("jobUrl", value)} placeholder="https://company.com/jobs/role" error={errors.jobUrl} />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Application date" type="date" value={form.applicationDate} onChange={(value) => update("applicationDate", value)} error={errors.applicationDate} />
+          <Field label="Follow-up date" type="date" value={form.followUpDate} onChange={(value) => update("followUpDate", value)} error={errors.followUpDate} />
+        </div>
         <div className="grid gap-2">
-          <Label id={statusId} className="font-mono text-[12px] uppercase text-[#53675A]">Status</Label>
+          <Label id={statusId} className="font-mono text-[12px] uppercase text-[#53675A]">Status <span aria-hidden="true">*</span></Label>
           <Select value={form.status} onValueChange={(value) => update("status", value)}>
-            <SelectTrigger aria-labelledby={statusId} className="h-11 rounded-2xl border-[#D8E3D4] bg-white">
+            <SelectTrigger aria-labelledby={statusId} className="h-11 rounded-lg border-[#D8E3D4] bg-white">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1672,27 +1949,44 @@ function ApplicationForm({
           </Select>
           {errors.status ? <FieldError message={errors.status} /> : null}
         </div>
+      </section>
+
+      <section className="grid gap-3" aria-labelledby="application-notes-heading">
+        <div>
+          <h3 id="application-notes-heading" className="text-[15px] font-semibold text-[#17201B]">Notes</h3>
+          <p className="mt-1 text-[12px] leading-5 text-[#53675A]">Capture recruiter names, prep notes, or reminders you do not want to lose.</p>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor={notesId} className="font-mono text-[12px] uppercase text-[#53675A]">Notes</Label>
+          <Textarea
+            id={notesId}
+            value={form.notes}
+            onChange={(event) => update("notes", event.target.value)}
+            aria-invalid={Boolean(errors.notes)}
+            aria-describedby={errors.notes ? notesErrorId : undefined}
+            className="min-h-28 rounded-lg border-[#D8E3D4] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+          />
+          {errors.notes ? <FieldError id={notesErrorId} message={errors.notes} /> : null}
+        </div>
+      </section>
+
+      <div className="sticky bottom-0 -mx-5 flex flex-col-reverse gap-2 border-t border-[#D8E3D4] bg-[#F8FAF3]/95 px-5 py-4 backdrop-blur sm:flex-row sm:justify-end">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          className="h-11 rounded-lg border-[#D8E3D4] bg-white px-4 font-mono text-[12px] text-[#17201B] hover:bg-[#F4F8EF]"
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={onSave}
+          disabled={saveDisabled}
+          className="h-11 rounded-lg bg-[#17201B] px-4 font-mono text-[12px] text-[#F7FAF1] shadow-[0_18px_40px_-30px_rgba(15,28,21,0.9)] transition-[background-color,transform] hover:bg-[#2A4033] active:scale-[0.96]"
+        >
+          {busy ? "Saving" : "Save application"}
+        </Button>
       </div>
-      <Field label="Follow-up date" type="date" value={form.followUpDate} onChange={(value) => update("followUpDate", value)} error={errors.followUpDate} />
-      <div className="grid gap-2">
-        <Label htmlFor={notesId} className="font-mono text-[12px] uppercase text-[#53675A]">Notes</Label>
-        <Textarea
-          id={notesId}
-          value={form.notes}
-          onChange={(event) => update("notes", event.target.value)}
-          aria-invalid={Boolean(errors.notes)}
-          aria-describedby={errors.notes ? notesErrorId : undefined}
-          className="min-h-28 rounded-2xl border-[#D8E3D4] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
-        />
-        {errors.notes ? <FieldError id={notesErrorId} message={errors.notes} /> : null}
-      </div>
-      <Button
-        onClick={onSave}
-        disabled={busy}
-        className="h-11 rounded-2xl bg-[#17201B] font-mono text-[12px] text-[#F7FAF1] shadow-[0_18px_40px_-30px_rgba(15,28,21,0.9)] hover:bg-[#2A4033] active:scale-[0.96]"
-      >
-        {busy ? "Saving" : "Save application"}
-      </Button>
     </div>
   );
 }
@@ -1706,6 +2000,7 @@ function Field({
   inputMode,
   pattern,
   error,
+  required,
 }: {
   label: string;
   value: string;
@@ -1715,16 +2010,21 @@ function Field({
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
   pattern?: string;
   error?: string;
+  required?: boolean;
 }) {
   const fieldId = useId();
   const errorId = useId();
 
   return (
     <div className="grid gap-2">
-      <Label htmlFor={fieldId} className="font-mono text-[12px] uppercase text-[#53675A]">{label}</Label>
+      <Label htmlFor={fieldId} className="font-mono text-[12px] uppercase text-[#53675A]">
+        {label}
+        {required ? <span aria-hidden="true"> *</span> : null}
+      </Label>
       <Input
         id={fieldId}
         type={type}
+        required={required}
         inputMode={inputMode}
         pattern={pattern}
         value={value}
@@ -1732,7 +2032,7 @@ function Field({
         placeholder={placeholder}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? errorId : undefined}
-        className="h-11 rounded-2xl border-[#D8E3D4] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+        className="h-11 rounded-lg border-[#D8E3D4] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
       />
       {error ? <FieldError id={errorId} message={error} /> : null}
     </div>
@@ -1757,14 +2057,14 @@ function ApplicationCard({
       whileTap={{ scale: 0.985 }}
       transition={springTransition}
       className={cn(
-        "group relative overflow-hidden rounded-[22px] border bg-white/90 p-3 shadow-[0_16px_36px_-32px_rgba(15,28,21,0.7)] transition-[border-color,box-shadow,background-color] duration-200 hover:bg-white hover:shadow-[0_24px_52px_-38px_rgba(15,28,21,0.8)]",
+        "group relative overflow-hidden border bg-white/92 p-3 shadow-[0_16px_36px_-32px_rgba(15,28,21,0.7)] transition-[border-color,box-shadow,background-color] duration-200 hover:bg-white hover:shadow-[0_24px_52px_-38px_rgba(15,28,21,0.8)]",
         statusMeta[application.status].border,
       )}
     >
-      <div className={cn("absolute inset-x-3 top-0 h-1 rounded-b-full", statusMeta[application.status].stripe)} />
+      <div className={cn("absolute inset-x-0 top-0 h-1", statusMeta[application.status].stripe)} />
       <div className="mb-3 flex min-w-0 items-start gap-3 pt-2">
         <div className="flex min-w-0 flex-1 items-start gap-2.5">
-          <CompanyMark company={application.companyName} className="size-10 rounded-2xl" />
+          <CompanyMark company={application.companyName} className="size-10 rounded-lg" />
           <div className="min-w-0">
             <p className="truncate text-[14px] font-semibold tracking-[-0.02em] text-[#17201B]">{application.role}</p>
             <p className="mt-1 truncate text-[13px] text-[#53675A]">
@@ -1786,7 +2086,7 @@ function ApplicationCard({
         <Select value={application.status} onValueChange={(value) => updateApplication(application.id, { status: value as ApplicationStatus })}>
           <SelectTrigger
             aria-label={`Status for ${application.role} at ${application.companyName}`}
-            className={cn("h-9 rounded-2xl border text-[12px]", statusMeta[application.status].border, statusMeta[application.status].wash)}
+            className={cn("h-9 rounded-lg border text-[12px]", statusMeta[application.status].border, statusMeta[application.status].wash)}
           >
             <SelectValue />
           </SelectTrigger>
@@ -1804,10 +2104,10 @@ function ApplicationCard({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 flex-1 rounded-2xl border-[#D8E3D4] bg-white/80 font-mono text-[11px] hover:border-[#91A99A] hover:bg-white"
+                className="h-9 flex-1 rounded-lg border-[#D8E3D4] bg-white/80 font-mono text-[11px] transition-[background-color,border-color,transform] hover:border-[#91A99A] hover:bg-white active:scale-[0.96]"
               >
                 <PanelRightOpen className="size-3.5" />
-                Detail
+                Edit details
               </Button>
             </SheetTrigger>
             <SheetContent className="w-full overflow-y-auto border-[#D8E3D4] bg-[#F8FAF3] sm:max-w-xl">
@@ -1827,9 +2127,13 @@ function ApplicationCard({
             variant="outline"
             size="icon"
             aria-label={`Delete ${application.role} at ${application.companyName}`}
-            className="size-9 rounded-2xl border-[#D8E3D4] bg-white/80 text-[#53675A] hover:border-[#B94A48]/35 hover:bg-[#FFF4F2] hover:text-[#B94A48]"
+            className="size-9 rounded-lg border-[#D8E3D4] bg-white/80 text-[#53675A] transition-[background-color,border-color,color,transform] hover:border-[#B94A48]/35 hover:bg-[#FFF4F2] hover:text-[#B94A48] active:scale-[0.96]"
             disabled={busy}
-            onClick={() => deleteApplication(application.id)}
+            onClick={() => {
+              if (window.confirm(`Delete ${application.role} at ${application.companyName}? This also removes related resume analyses and interview questions.`)) {
+                deleteApplication(application.id);
+              }
+            }}
           >
             <Trash2 className="size-4" />
           </Button>
@@ -1882,7 +2186,7 @@ function ApplicationDetailForm({
           value={notes}
           onChange={(event) => setNotes(event.target.value)}
           placeholder="Keep interview signals, contact names, and next steps here."
-          className="min-h-36 rounded-2xl border-[#D8E3D4] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+          className="min-h-36 rounded-lg border-[#D8E3D4] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
         />
       </div>
       <Field label="Follow-up date" type="date" value={followUpDate} onChange={setFollowUpDate} />
@@ -1895,14 +2199,14 @@ function ApplicationDetailForm({
             variant="outline"
             onClick={resetDraft}
             disabled={!isDirty || saving || busy}
-            className="h-10 rounded-2xl border-[#D8E3D4] bg-white px-4 font-mono text-[12px] text-[#53675A] hover:bg-[#F4F8EF] active:scale-[0.96]"
+            className="h-10 rounded-lg border-[#D8E3D4] bg-white px-4 font-mono text-[12px] text-[#53675A] hover:bg-[#F4F8EF] active:scale-[0.96]"
           >
             Cancel
           </Button>
           <Button
             onClick={saveDetails}
             disabled={!isDirty || saving || busy}
-            className="h-10 rounded-2xl bg-[#17201B] px-4 font-mono text-[12px] text-[#F7FAF1] hover:bg-[#2A4033] active:scale-[0.96]"
+            className="h-10 rounded-lg bg-[#17201B] px-4 font-mono text-[12px] text-[#F7FAF1] hover:bg-[#2A4033] active:scale-[0.96]"
           >
             {saving ? "Saving" : "Save details"}
           </Button>
@@ -1956,30 +2260,25 @@ function ResumeView({
   const jobDescriptionId = useId();
   const resumeFileId = useId();
   const resumeTextId = useId();
+  const canAnalyze = !busy && quota.remaining > 0 && resumeText.trim().length >= 80 && jobDescription.trim().length >= 80;
 
   return (
     <div className="grid gap-5">
-      <section className="relative overflow-hidden rounded-[30px] bg-[#17201B] p-5 text-[#F7FAF1] shadow-[0_28px_80px_-54px_rgba(7,24,14,0.9)]">
-        <Image
-          src="/brand/logo-mark.svg"
-          alt=""
-          width={190}
-          height={190}
-          className="pointer-events-none absolute -right-8 -top-12 w-44 opacity-[0.07]"
-        />
+      <section className="relative overflow-hidden border border-[#17201B] bg-[#17201B] p-5 text-[#F7FAF1] shadow-[0_28px_80px_-54px_rgba(7,24,14,0.9)]">
         <div className="relative grid gap-5 xl:grid-cols-[1fr_420px] xl:items-end">
           <div>
-            <h1 className="max-w-2xl text-[36px] font-semibold leading-[0.98] tracking-[-0.06em] md:text-[54px]">
-              Resume diagnostics, pointed at one real role.
+            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.14em] text-[#DDE85F]">Resume Analyzer</p>
+            <h1 className="max-w-2xl text-[34px] font-semibold leading-[1] text-balance md:text-[52px]">
+              Compare your resume against one role.
             </h1>
-            <p className="mt-4 max-w-xl text-[14px] leading-6 text-[#BFD1C4]">
-              Paste the job description and resume text. JobPilot turns the gap into specific keywords, bullet rewrites, and a score you can act on.
+            <p className="mt-4 max-w-xl text-[14px] leading-6 text-pretty text-[#BFD1C4]">
+              Paste a job description and resume to find keyword gaps, rewrite bullets, and get focused feedback.
             </p>
           </div>
-          <div className="rounded-3xl border border-white/12 bg-white/8 p-3 backdrop-blur">
+          <div className="border border-white/12 bg-white/8 p-3 backdrop-blur">
             <p id={targetApplicationId} className="mb-2 font-mono text-[11px] uppercase text-[#BFD1C4]">Target application</p>
             <Select value={selectedApplicationId} onValueChange={setSelectedApplicationId}>
-              <SelectTrigger aria-labelledby={targetApplicationId} className="h-12 rounded-2xl border-white/12 bg-[#F7FAF1] text-[13px] text-[#17201B]">
+              <SelectTrigger aria-labelledby={targetApplicationId} className="h-12 rounded-lg border-white/12 bg-[#F7FAF1] text-[13px] text-[#17201B]">
                 <SelectValue placeholder="Select application" />
               </SelectTrigger>
               <SelectContent>
@@ -1990,7 +2289,8 @@ function ResumeView({
                 ))}
               </SelectContent>
             </Select>
-            <div className="mt-3 flex items-center gap-3 rounded-2xl bg-black/12 p-3">
+            <p className="mt-2 text-[12px] leading-5 text-[#BFD1C4]">Selecting an application links the saved analysis to that role.</p>
+            <div className="mt-3 flex items-center gap-3 bg-black/12 p-3">
               <CompanyMark company={selectedApplication?.companyName ?? "JobPilot"} className="border-white/15 bg-white/12 text-[#F7FAF1]" />
               <div className="min-w-0">
                 <p className="truncate text-[13px] font-semibold">{selectedApplication?.companyName ?? "No application selected"}</p>
@@ -2004,26 +2304,29 @@ function ResumeView({
       {quota.remaining <= 0 ? <QuotaBlocked /> : null}
 
       <div className="grid gap-5 xl:grid-cols-[0.84fr_1.16fr]">
-        <section className="overflow-hidden rounded-[28px] border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-48px_rgba(15,28,21,0.7)]">
+        <section className="overflow-hidden border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-48px_rgba(15,28,21,0.7)]">
           <SectionHeader title="Analysis context" icon={<FileText className="size-4 text-[#53675A]" />} />
           <div className="grid gap-4 p-4">
             {resumeError ? <ErrorNotice message={resumeError} /> : null}
+            <div className="border border-[#D8E3D4] bg-[#F4F8EF] p-3 text-[13px] leading-6 text-[#53675A]">
+              Analyze resume uses 1 AI action. Text is extracted from PDF before analysis, and manual paste stays available.
+            </div>
             <div className="grid gap-2">
               <Label htmlFor={jobDescriptionId} className="font-mono text-[12px] uppercase text-[#53675A]">Job description</Label>
               <Textarea
                 id={jobDescriptionId}
                 value={jobDescription}
                 onChange={(event) => setJobDescription(event.target.value)}
-                placeholder="Paste target job description here..."
-                className="min-h-40 rounded-2xl border-[#D8E3D4] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+                placeholder="Paste the target job description here."
+                className="min-h-40 rounded-lg border-[#D8E3D4] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
               />
             </div>
             <div className="grid gap-2">
               <Label htmlFor={resumeTextId} className="font-mono text-[12px] uppercase text-[#53675A]">Resume content</Label>
-              <div className="rounded-2xl border border-dashed border-[#BFD1C4] bg-white/72 p-3">
+              <div className="border border-dashed border-[#BFD1C4] bg-white/72 p-3">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-start gap-3">
-                    <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[#E6EFD9] text-[#17201B]">
+                    <div className="grid size-10 shrink-0 place-items-center bg-[#E6EFD9] text-[#17201B]">
                       {resumeFileLoading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
                     </div>
                     <div>
@@ -2043,11 +2346,11 @@ function ResumeView({
                       void importResumePdf(event.target.files?.[0] ?? null);
                       event.currentTarget.value = "";
                     }}
-                    className="h-11 rounded-2xl border-[#D8E3D4] bg-[#F8FAF3] text-[13px] file:mr-3 file:rounded-xl file:bg-[#17201B] file:px-3 file:text-[#F7FAF1] sm:max-w-72"
+                    className="h-11 rounded-lg border-[#D8E3D4] bg-[#F8FAF3] text-[13px] file:mr-3 file:rounded-md file:bg-[#17201B] file:px-3 file:text-[#F7FAF1] sm:max-w-72"
                   />
                 </div>
                 {resumeFileName ? (
-                  <p className="mt-3 rounded-xl bg-[#F4F8EF] px-3 py-2 font-mono text-[11px] text-[#53675A]">{resumeFileName}</p>
+                  <p className="mt-3 bg-[#F4F8EF] px-3 py-2 font-mono text-[11px] text-[#53675A]">{resumeFileName}</p>
                 ) : null}
                 {resumeFileError ? <div className="mt-3"><FieldError message={resumeFileError} /></div> : null}
               </div>
@@ -2055,23 +2358,26 @@ function ResumeView({
                 id={resumeTextId}
                 value={resumeText}
                 onChange={(event) => setResumeText(event.target.value)}
-                placeholder="Paste current resume text here..."
-                className="min-h-64 rounded-2xl border-[#D8E3D4] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+                placeholder="Paste current resume text here."
+                className="min-h-64 rounded-lg border-[#D8E3D4] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
               />
             </div>
           </div>
           <div className="border-t border-[#D8E3D4] bg-[#F1F6ED] p-3">
             <Button
               onClick={analyzeResume}
-              disabled={busy || quota.remaining <= 0}
-              className="h-11 w-full rounded-2xl bg-[#17201B] font-mono text-[12px] text-[#F7FAF1] shadow-[0_18px_42px_-30px_rgba(15,28,21,0.9)] hover:bg-[#2A4033] active:scale-[0.96]"
+              disabled={!canAnalyze}
+              className="h-11 w-full rounded-lg bg-[#17201B] font-mono text-[12px] text-[#F7FAF1] shadow-[0_18px_42px_-30px_rgba(15,28,21,0.9)] transition-[background-color,transform] hover:bg-[#2A4033] active:scale-[0.96]"
             >
-              <Bot className="size-4" />
+              <FileSearch className="size-4" />
               {busy ? "Analyzing" : "Analyze resume"}
             </Button>
+            {!canAnalyze && quota.remaining > 0 && !busy ? (
+              <p className="mt-2 text-center text-[12px] leading-5 text-[#53675A]">Paste at least 80 characters for both the job description and resume.</p>
+            ) : null}
           </div>
         </section>
-        <section className="overflow-hidden rounded-[28px] border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-48px_rgba(15,28,21,0.7)]">
+        <section className="overflow-hidden border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-48px_rgba(15,28,21,0.7)]">
           <SectionHeader title="Analysis results" icon={<BarChart3 className="size-4 text-[#53675A]" />} />
           <div className="p-4">
             {busy ? (
@@ -2079,7 +2385,12 @@ function ResumeView({
             ) : analysis ? (
               <AnalysisPanel analysis={analysis} />
             ) : (
-              <EmptyState title="No analysis yet" description="Run an analysis to see score, keywords, and rewritten bullets." />
+              <EmptyState
+                title="No analysis yet"
+                description="Paste a job description and resume to get keyword gaps, strong matches, and rewrite suggestions."
+                actionLabel="Analyze resume"
+                onAction={canAnalyze ? analyzeResume : undefined}
+              />
             )}
           </div>
         </section>
@@ -2091,9 +2402,9 @@ function ResumeView({
 function AnalysisSkeleton() {
   return (
     <div className="grid gap-4">
-      <Skeleton className="h-24 w-full rounded-3xl" />
-      <Skeleton className="h-28 w-full rounded-3xl" />
-      <Skeleton className="h-36 w-full rounded-3xl" />
+      <Skeleton className="h-24 w-full rounded-lg" />
+      <Skeleton className="h-28 w-full rounded-lg" />
+      <Skeleton className="h-36 w-full rounded-lg" />
     </div>
   );
 }
@@ -2101,9 +2412,9 @@ function AnalysisSkeleton() {
 function AnalysisPanel({ analysis }: { analysis: ResumeAnalysis }) {
   return (
     <div className="grid gap-5">
-      <div className="relative overflow-hidden rounded-[26px] bg-[#17201B] p-5 text-[#F7FAF1]">
+      <div className="relative overflow-hidden bg-[#17201B] p-5 text-[#F7FAF1]">
         <div className="relative flex items-center gap-5">
-          <div className="grid size-20 place-items-center rounded-3xl border border-[#DDE85F]/35 bg-[#DDE85F] shadow-[0_18px_42px_-28px_rgba(221,232,95,0.9)]">
+          <div className="grid size-20 place-items-center border border-[#DDE85F]/35 bg-[#DDE85F] shadow-[0_18px_42px_-28px_rgba(221,232,95,0.9)]">
             <span className="font-mono text-[28px] font-semibold text-[#17201B]">{analysis.score}</span>
           </div>
           <div>
@@ -2133,7 +2444,7 @@ function InsightList({
 }) {
   if (tone !== "neutral") {
     return (
-      <div className="rounded-[22px] border border-[#D8E3D4] bg-white/74 p-3">
+      <div className="border border-[#D8E3D4] bg-white/74 p-3">
         <p className="border-b border-[#D8E3D4] pb-2 font-mono text-[12px] font-medium uppercase text-[#53675A]">{title}</p>
         <div className="mt-2 grid gap-2">
           {items.map((item) => (
@@ -2154,11 +2465,11 @@ function InsightList({
   }
 
   return (
-    <div className="rounded-[22px] border border-[#D8E3D4] bg-white/74 p-3">
+    <div className="border border-[#D8E3D4] bg-white/74 p-3">
       <p className="border-b border-[#D8E3D4] pb-2 font-mono text-[12px] font-medium uppercase text-[#53675A]">{title}</p>
       <div className="mt-2 grid gap-2">
         {items.map((item) => (
-          <div key={item} className="rounded-2xl border border-[#D8E3D4] bg-[#F4F8EF] p-3 text-[13px] leading-6 text-[#3B4B40]">
+          <div key={item} className="border border-[#D8E3D4] bg-[#F4F8EF] p-3 text-[13px] leading-6 text-[#3B4B40]">
             {item}
           </div>
         ))}
@@ -2191,24 +2502,25 @@ function InterviewView({
     questions: questions.filter((question) => question.category === category && (!selectedApplicationId || question.applicationId === selectedApplicationId)),
   }));
   const selectedApplication = applications.find((application) => application.id === selectedApplicationId);
+  const canGenerate = Boolean(selectedApplication) && quota.remaining > 0 && !busy;
 
   return (
     <div className="grid gap-5">
-      <section className="relative overflow-hidden rounded-[30px] border border-[#D8E3D4] bg-[#F9FBF4] p-4 shadow-[0_24px_70px_-56px_rgba(15,28,21,0.75)] md:p-5">
-        <div className="absolute inset-y-0 right-0 hidden w-1/3 bg-[#F4F8EF] md:block" />
+      <section className="relative overflow-hidden border border-[#D8E3D4] bg-[#F9FBF4] p-4 shadow-[0_24px_70px_-56px_rgba(15,28,21,0.75)] md:p-5">
         <div className="relative grid gap-5 xl:grid-cols-[1fr_470px] xl:items-end">
           <div>
-            <h1 className="text-[34px] font-semibold leading-[0.98] tracking-[-0.06em] text-[#17201B] md:text-[48px]">
-              Practice with notes that survive the real call.
+            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.14em] text-[#53675A]">Interview Prep</p>
+            <h1 className="text-[34px] font-semibold leading-[1] text-balance text-[#17201B] md:text-[48px]">
+              Prepare for interviews with role-specific questions.
             </h1>
-            <p className="mt-3 max-w-xl text-[14px] leading-6 text-[#53675A]">
-              Generate role-specific prompts, check off rehearsed answers, and keep your rough talking points beside every question.
+            <p className="mt-3 max-w-xl text-[14px] leading-6 text-pretty text-[#53675A]">
+              Generate practice questions, mark answers as rehearsed, and keep notes beside each role.
             </p>
           </div>
-          <div className="rounded-3xl border border-[#D8E3D4] bg-white/72 p-3 shadow-[0_18px_40px_-34px_rgba(15,28,21,0.68)]">
+          <div className="border border-[#D8E3D4] bg-white/72 p-3 shadow-[0_18px_40px_-34px_rgba(15,28,21,0.68)]">
             <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
               <Select value={selectedApplicationId} onValueChange={setSelectedApplicationId}>
-                <SelectTrigger aria-label="Select application for interview prep" className="h-11 rounded-2xl border-[#D8E3D4] bg-white text-[13px]">
+                <SelectTrigger aria-label="Select application for interview prep" className="h-11 rounded-lg border-[#D8E3D4] bg-white text-[13px]">
                   <SelectValue placeholder="Select application" />
                 </SelectTrigger>
                 <SelectContent>
@@ -2221,31 +2533,39 @@ function InterviewView({
               </Select>
               <Button
                 onClick={generateInterviewQuestions}
-                disabled={busy || quota.remaining <= 0}
-                className="h-11 rounded-2xl bg-[#17201B] px-4 font-mono text-[12px] text-[#F7FAF1] hover:bg-[#2A4033] active:scale-[0.96]"
+                disabled={!canGenerate}
+                className="h-11 rounded-lg bg-[#17201B] px-4 font-mono text-[12px] text-[#F7FAF1] transition-[background-color,transform] hover:bg-[#2A4033] active:scale-[0.96]"
               >
-                <Bot className="size-4" />
+                <ClipboardList className="size-4" />
                 {busy ? "Generating" : "Generate questions"}
               </Button>
             </div>
-            <div className="mt-3 flex items-center gap-3 rounded-2xl bg-[#F4F8EF] p-3">
+            <div className="mt-3 flex items-center gap-3 bg-[#F4F8EF] p-3">
               <CompanyMark company={selectedApplication?.companyName ?? "JobPilot"} />
               <div className="min-w-0">
                 <p className="truncate text-[13px] font-semibold">{selectedApplication?.companyName ?? "No application selected"}</p>
                 <p className="truncate text-[12px] text-[#53675A]">{selectedApplication?.role ?? "Pick a role before generating prompts."}</p>
               </div>
             </div>
+            <p className="mt-2 text-[12px] leading-5 text-[#53675A]">Generating questions uses 1 AI action. Notes and practiced checkboxes do not.</p>
           </div>
         </div>
       </section>
 
       {quota.remaining <= 0 ? <QuotaBlocked /> : null}
 
+      {!applications.length ? (
+        <EmptyState
+          title="Add an application before interview prep"
+          description="Interview questions are generated from a saved role, so add the company and role first."
+        />
+      ) : null}
+
       <div className="grid gap-4">
         {grouped.map((group) => (
           <section
             key={group.category}
-            className="overflow-hidden rounded-[28px] border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-50px_rgba(15,28,21,0.68)]"
+            className="overflow-hidden border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-50px_rgba(15,28,21,0.68)]"
           >
             <SectionHeader title={group.category} />
             <div className="grid gap-3 bg-[#F1F6ED] p-3 md:grid-cols-2 xl:grid-cols-3">
@@ -2258,7 +2578,12 @@ function InterviewView({
                   />
                 ))
               ) : (
-                <EmptyState title="No questions yet" description="Generate questions for the selected application." />
+                <EmptyState
+                  title="No questions yet"
+                  description={selectedApplication ? "Generate role-specific questions for the selected application." : "Select an application before generating questions."}
+                  actionLabel={selectedApplication ? "Generate questions" : undefined}
+                  onAction={canGenerate ? generateInterviewQuestions : undefined}
+                />
               )}
             </div>
           </section>
@@ -2292,7 +2617,7 @@ function InterviewQuestionCard({
   }
 
   return (
-    <div className="grid gap-3 rounded-[22px] border border-[#D8E3D4] bg-white/88 p-3 shadow-[0_16px_36px_-34px_rgba(15,28,21,0.7)] transition-[border-color,transform,box-shadow] hover:-translate-y-0.5 hover:border-[#91A99A] hover:shadow-[0_24px_52px_-40px_rgba(15,28,21,0.85)]">
+    <div className="grid gap-3 border border-[#D8E3D4] bg-white/90 p-3 shadow-[0_16px_36px_-34px_rgba(15,28,21,0.7)] transition-[border-color,transform,box-shadow] hover:-translate-y-0.5 hover:border-[#91A99A] hover:shadow-[0_24px_52px_-40px_rgba(15,28,21,0.85)]">
       <div className="flex gap-3">
         <Checkbox
           checked={question.practiced}
@@ -2304,14 +2629,17 @@ function InterviewQuestionCard({
           {question.question}
         </p>
       </div>
+      <div className="w-fit border border-[#D8E3D4] bg-[#F4F8EF] px-2 py-1 font-mono text-[10px] uppercase text-[#53675A]">
+        {question.practiced ? "Practiced" : "Needs work"}
+      </div>
       <div className="grid gap-2">
-        <Label htmlFor={answerNotesId} className="sr-only">Answer notes</Label>
+        <Label htmlFor={answerNotesId} className="font-mono text-[12px] uppercase text-[#53675A]">Answer notes</Label>
         <Textarea
           id={answerNotesId}
           value={answerNotes}
           onChange={(event) => setAnswerNotes(event.target.value)}
           placeholder="Answer notes"
-          className="min-h-24 rounded-2xl border-[#D8E3D4] bg-[#F9FBF4]"
+          className="min-h-24 rounded-lg border-[#D8E3D4] bg-[#F9FBF4]"
         />
         <div className="flex items-center justify-between gap-3">
           <span className="text-[11px] text-[#53675A]">{isDirty ? "Unsaved notes" : "Saved"}</span>
@@ -2320,7 +2648,7 @@ function InterviewQuestionCard({
             size="sm"
             onClick={saveAnswerNotes}
             disabled={!isDirty || saving}
-            className="h-9 rounded-2xl border-[#D8E3D4] bg-white/80 px-3 font-mono text-[11px] hover:bg-white active:scale-[0.96]"
+            className="h-9 rounded-lg border-[#D8E3D4] bg-white/80 px-3 font-mono text-[11px] hover:bg-white active:scale-[0.96]"
           >
             {saving ? "Saving" : "Save notes"}
           </Button>
@@ -2349,61 +2677,69 @@ function SettingsView({
   clearingData: boolean;
   startOnboarding: () => void;
 }) {
+  const [confirmClear, setConfirmClear] = useState("");
+
   return (
     <div className="grid w-full gap-5">
-      <section className="relative overflow-hidden rounded-[30px] bg-[#17201B] p-5 text-[#F7FAF1] shadow-[0_28px_80px_-54px_rgba(7,24,14,0.9)]">
+      <section className="relative overflow-hidden border border-[#17201B] bg-[#17201B] p-5 text-[#F7FAF1] shadow-[0_28px_80px_-54px_rgba(7,24,14,0.9)]">
         <div className="relative">
           <div className="mb-4 flex h-12 w-40 items-center">
             <Image src="/brand/logo-complete.svg" alt={APP_CONFIG.name} width={154} height={50} className="h-auto w-full brightness-0 invert" />
           </div>
-          <h1 className="max-w-2xl text-[36px] font-semibold leading-[0.98] tracking-[-0.06em] md:text-[54px]">
-            Workspace settings without account friction.
+          <h1 className="max-w-2xl text-[34px] font-semibold leading-[1] text-balance md:text-[52px]">
+            Manage your demo workspace.
           </h1>
-          <p className="mt-4 max-w-xl text-[14px] leading-6 text-[#BFD1C4]">
-            JobPilot stays open. Your browser gets a name, and AI usage stays capped by browser and network so the public demo remains usable.
+          <p className="mt-4 max-w-xl text-[14px] leading-6 text-pretty text-[#BFD1C4]">
+            Update your display name, check AI usage, replay onboarding, or clear local data.
           </p>
         </div>
       </section>
       <div className="grid gap-4 md:grid-cols-[1.05fr_0.95fr]">
-        <section className="overflow-hidden rounded-[28px] border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-50px_rgba(15,28,21,0.68)]">
-          <SectionHeader title="Workspace identity" />
+        <section className="overflow-hidden border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-50px_rgba(15,28,21,0.68)]">
+          <SectionHeader title="Workspace identity" icon={<UserRound className="size-4 text-[#53675A]" />} />
           <div className="grid gap-4 p-4">
+            <div className="border border-[#D8E3D4] bg-[#F4F8EF] p-3">
+              <p className="font-mono text-[11px] uppercase text-[#53675A]">Current workspace</p>
+              <p className="mt-2 text-[18px] font-semibold text-[#17201B]">{guest?.name ?? "Guest"}</p>
+            </div>
             <Field label="Display name" value={name || guest?.name || ""} onChange={setName} />
-            <Button
-              onClick={saveName}
-              className="h-11 w-fit rounded-2xl bg-[#17201B] px-5 font-mono text-[12px] text-[#F7FAF1] hover:bg-[#2A4033] active:scale-[0.96]"
-            >
-              Save name
-            </Button>
-            <Button
-              variant="outline"
-              onClick={startOnboarding}
-              className="h-11 w-fit rounded-2xl border-[#D8E3D4] bg-white px-5 font-mono text-[12px] text-[#17201B] hover:bg-[#F4F8EF] active:scale-[0.96]"
-            >
-              Replay walkthrough
-            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                onClick={saveName}
+                className="h-11 w-fit rounded-lg bg-[#17201B] px-5 font-mono text-[12px] text-[#F7FAF1] hover:bg-[#2A4033] active:scale-[0.96]"
+              >
+                Save name
+              </Button>
+              <Button
+                variant="outline"
+                onClick={startOnboarding}
+                className="h-11 w-fit rounded-lg border-[#D8E3D4] bg-white px-5 font-mono text-[12px] text-[#17201B] hover:bg-[#F4F8EF] active:scale-[0.96]"
+              >
+                Replay walkthrough
+              </Button>
+            </div>
           </div>
         </section>
-        <section className="overflow-hidden rounded-[28px] border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-50px_rgba(15,28,21,0.68)]">
-          <SectionHeader title="AI usage" />
+        <section className="overflow-hidden border border-[#D8E3D4] bg-[#F9FBF4] shadow-[0_24px_60px_-50px_rgba(15,28,21,0.68)]">
+          <SectionHeader title="AI usage" icon={<Clock3 className="size-4 text-[#53675A]" />} />
           <div className="p-4">
             <div>
               <p className="font-mono text-[42px] font-semibold leading-none tracking-[-0.04em] text-[#17201B] tabular-nums">
                 {quota.used}/{quota.limit}
               </p>
               <p className="mt-2 text-[13px] text-[#53675A]">
-                actions used today, {quota.remaining} remaining
+                {formatAiActionsLeft(quota)}
               </p>
             </div>
-            <Progress value={getQuotaProgressValue(quota)} className="mt-5 h-2 rounded-full" />
-            <p className="mt-4 rounded-2xl border border-[#D8E3D4] bg-[#F4F8EF] p-3 text-[13px] leading-6 text-[#53675A]">
-              AI actions are limited to {quota.limit} per day for this browser. Tracking, notes, and manual edits keep working after the limit.
+            <Progress value={getQuotaProgressValue(quota)} className="mt-5 h-2" />
+            <p className="mt-4 border border-[#D8E3D4] bg-[#F4F8EF] p-3 text-[13px] leading-6 text-[#53675A]">
+              Guest mode includes {quota.limit} AI actions per day in this browser. Resume analysis and interview question generation use AI actions. Manual tracking still works after the limit.
             </p>
           </div>
         </section>
       </div>
-      <section className="overflow-hidden rounded-[28px] border border-[#E3AAA8] bg-[#FFF4F2] shadow-[0_24px_60px_-50px_rgba(80,20,18,0.35)]">
-        <SectionHeader title="Local data" />
+      <section className="overflow-hidden border border-[#E3AAA8] bg-[#FFF4F2] shadow-[0_24px_60px_-50px_rgba(80,20,18,0.35)]">
+        <SectionHeader title="Local data" icon={<Database className="size-4 text-[#68413F]" />} />
         <div className="grid gap-4 p-4 md:grid-cols-[1fr_auto] md:items-center">
           <div>
             <p className="text-[15px] font-semibold tracking-[-0.02em] text-[#17201B]">Clear this workspace</p>
@@ -2411,39 +2747,50 @@ function SettingsView({
               Deletes applications, resume analyses, interview notes, activity entries, and the current guest name from the local JSON file. Daily AI usage records are retained for abuse prevention.
             </p>
           </div>
-          <Dialog>
+          <Dialog onOpenChange={(open) => {
+            if (!open) setConfirmClear("");
+          }}>
             <DialogTrigger asChild>
               <Button
                 variant="outline"
-                className="h-11 rounded-2xl border-[#B94A48]/35 bg-white/70 px-4 font-mono text-[12px] text-[#93000A] hover:bg-white hover:text-[#93000A] active:scale-[0.96]"
+                className="h-11 rounded-lg border-[#B94A48]/35 bg-white/70 px-4 font-mono text-[12px] text-[#93000A] hover:bg-white hover:text-[#93000A] active:scale-[0.96]"
               >
                 <Trash2 className="size-4" />
                 Clear workspace
               </Button>
             </DialogTrigger>
-            <DialogContent className="rounded-3xl border-[#E3AAA8] bg-[#FFF9F7] shadow-[0_32px_80px_-42px_rgba(80,20,18,0.6)]">
+            <DialogContent className="rounded-lg border-[#E3AAA8] bg-[#FFF9F7] shadow-[0_32px_80px_-42px_rgba(80,20,18,0.6)]">
               <DialogHeader>
-                <div className="mb-1 grid size-11 place-items-center rounded-2xl bg-[#FFF4F2] text-[#B94A48]">
+                <div className="mb-1 grid size-11 place-items-center bg-[#FFF4F2] text-[#B94A48]">
                   <AlertTriangle className="size-5" />
                 </div>
-                <DialogTitle className="tracking-[-0.04em]">Clear workspace data?</DialogTitle>
+                <DialogTitle>Clear workspace data?</DialogTitle>
                 <DialogDescription className="text-[#68413F]">
                   This removes workspace records and signs out the current browser session. Daily AI quota records are retained for abuse prevention.
                 </DialogDescription>
               </DialogHeader>
+              <div className="grid gap-2">
+                <Label htmlFor="confirm-clear" className="font-mono text-[12px] uppercase text-[#68413F]">Type CLEAR to confirm</Label>
+                <Input
+                  id="confirm-clear"
+                  value={confirmClear}
+                  onChange={(event) => setConfirmClear(event.target.value)}
+                  className="h-11 rounded-lg border-[#E3AAA8] bg-white"
+                />
+              </div>
               <DialogFooter>
                 <DialogClose asChild>
                   <Button
                     variant="outline"
-                    className="h-11 rounded-2xl border-[#D8E3D4] bg-white px-4 font-mono text-[12px] text-[#17201B] hover:bg-[#F4F8EF]"
+                    className="h-11 rounded-lg border-[#D8E3D4] bg-white px-4 font-mono text-[12px] text-[#17201B] hover:bg-[#F4F8EF]"
                   >
                     Cancel
                   </Button>
                 </DialogClose>
                 <Button
                   onClick={clearAllData}
-                  disabled={clearingData}
-                  className="h-11 rounded-2xl bg-[#B94A48] px-4 font-mono text-[12px] text-white hover:bg-[#9F3836] active:scale-[0.96]"
+                  disabled={clearingData || confirmClear !== "CLEAR"}
+                  className="h-11 rounded-lg bg-[#B94A48] px-4 font-mono text-[12px] text-white hover:bg-[#9F3836] active:scale-[0.96]"
                 >
                   {clearingData ? "Clearing" : "Clear workspace"}
                 </Button>
@@ -2490,7 +2837,7 @@ function CompanyMark({ company, className }: { company: string; className?: stri
   return (
     <div
       className={cn(
-        "grid size-8 shrink-0 place-items-center rounded-xl border border-[#D8E3D4] bg-[#F4F8EF] font-mono text-[10px] font-bold text-[#17201B]",
+        "grid size-8 shrink-0 place-items-center rounded-lg border border-[#D8E3D4] bg-[#F4F8EF] font-mono text-[10px] font-bold text-[#17201B]",
         className,
       )}
     >
@@ -2531,16 +2878,16 @@ function QuotaRing({ quota }: { quota: AiQuota }) {
 
 function QuotaBlocked() {
   return (
-    <div className="flex items-start gap-3 rounded-2xl border border-[#B94A48]/30 bg-[#FFF4F2] p-3 text-[13px] leading-6 text-[#B94A48]">
+    <div className="flex items-start gap-3 border border-[#B94A48]/30 bg-[#FFF4F2] p-3 text-[13px] leading-6 text-[#B94A48]">
       <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-      <span>Daily AI limit reached. You can keep tracking applications and come back tomorrow for more AI help.</span>
+      <span>You have used today&apos;s AI actions. You can still add applications, update notes, and manage follow-ups.</span>
     </div>
   );
 }
 
 function ErrorNotice({ message }: { message: string }) {
   return (
-    <div role="alert" className="flex items-start gap-2 rounded-2xl border border-[#B94A48]/30 bg-[#FFF4F2] p-3 text-[13px] leading-5 text-[#B94A48]">
+    <div role="alert" className="flex items-start gap-2 border border-[#B94A48]/30 bg-[#FFF4F2] p-3 text-[13px] leading-5 text-[#B94A48]">
       <AlertTriangle className="mt-0.5 size-4 shrink-0" />
       <span>{message}</span>
     </div>
@@ -2555,11 +2902,39 @@ function FieldError({ id, message }: { id?: string; message: string }) {
   );
 }
 
-function EmptyState({ title, description }: { title: string; description: string }) {
+function EmptyState({
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  description: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
   return (
-    <div className="rounded-[22px] border border-dashed border-[#BFD1C4] bg-[#F4F8EF] p-4">
-      <p className="text-[13px] font-semibold text-[#17201B]">{title}</p>
-      <p className="mt-1 text-[13px] leading-5 text-[#53675A]">{description}</p>
+    <div className="border border-dashed border-[#BFD1C4] bg-[#F4F8EF] p-4">
+      <div className="mb-3 flex items-start gap-3">
+        <div className="grid size-9 shrink-0 place-items-center bg-white text-[#1B7A4E]">
+          <ListChecks className="size-4" />
+        </div>
+        <div>
+          <p className="text-[13px] font-semibold text-[#17201B]">{title}</p>
+          <p className="mt-1 text-[13px] leading-5 text-pretty text-[#53675A]">{description}</p>
+        </div>
+      </div>
+      {actionLabel && onAction ? (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onAction}
+          className="h-10 rounded-lg border-[#BFD1C4] bg-white px-3 font-mono text-[11px] text-[#17201B] hover:bg-[#F9FBF4] active:scale-[0.96]"
+        >
+          {actionLabel}
+          <ArrowRight className="size-3.5" />
+        </Button>
+      ) : null}
     </div>
   );
 }

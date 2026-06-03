@@ -115,8 +115,10 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    background: #0f1c15;
+    background: #f3f0e8;
     letter-spacing: 0;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 
   ::selection {
@@ -136,6 +138,11 @@
   ::-webkit-scrollbar-thumb {
     background: #91a99a;
     border-radius: 2px;
+  }
+
+  :focus-visible {
+    outline: 2px solid #1b7a4e;
+    outline-offset: 3px;
   }
 }
 
@@ -159,6 +166,17 @@
 
   .landing-drift {
     animation: landing-drift 6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
