@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 import { APP_CONFIG } from "@/lib/jobpilot/config";
 import "./globals.css";
 
@@ -33,6 +34,7 @@ export default function RootLayout({
           {children}
           <Toaster richColors closeButton />
           <SpeedInsights />
+          <Analytics />
         </TooltipProvider>
       </body>
     </html>
