@@ -8,6 +8,10 @@ export function routeErrorResponse(error: unknown, fallbackMessage = "Request fa
     return NextResponse.json({ error: "Enter your name to start." }, { status: 401 });
   }
 
+  if (error instanceof SyntaxError) {
+    return NextResponse.json({ error: "Invalid JSON request body." }, { status: 400 });
+  }
+
   return NextResponse.json({ error: fallbackMessage }, { status: 500 });
 }
 

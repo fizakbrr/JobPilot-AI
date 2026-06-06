@@ -6,7 +6,7 @@ This model covers the Next.js app, API routes under `app/api`, local JSON storag
 
 Assumptions:
 - JobPilot is an open demo with no account authentication.
-- A guest cookie scopes one browser session to one local workspace, and a separate visitor cookie scopes AI quota.
+- A guest cookie scopes one browser session to one local workspace, and a separate visitor cookie scopes review-credit quota.
 - Production uses server-side environment variables for `GEMINI_API_KEY`.
 - Local JSON storage remains the source of truth. There is no SQL database.
 
@@ -14,7 +14,7 @@ Assumptions:
 
 - Guest display names and guest ids.
 - Application records, salary values, notes, resume text, job descriptions, and interview notes.
-- AI usage counters and daily quota state.
+- Review-credit counters and daily quota state.
 - `GEMINI_API_KEY` and server runtime environment variables.
 - Availability of AI endpoints and local JSON storage.
 
@@ -27,7 +27,7 @@ Assumptions:
 - `POST /api/ai/resume` sends resume and job text to the server-side AI proxy.
 - `POST /api/ai/interview` generates interview questions.
 - `PATCH /api/interview-questions/[id]` updates question notes and practiced state.
-- `DELETE /api/local-data` clears the current guest workspace and guest cookie while preserving daily AI usage counters.
+- `DELETE /api/local-data` clears the current guest workspace and guest cookie while preserving daily review-credit counters.
 - Resume PDF upload is parsed client-side before text is sent to the API.
 
 ## Trust Boundaries
@@ -45,7 +45,7 @@ Assumptions:
 - AI outputs are sanitized before storage.
 - Application ownership checks require `guestId` matches before update, delete, AI resume linkage, and interview generation.
 - Critical routes use in-memory rate limits by client IP, and AI routes also rate limit by a server-issued visitor cookie.
-- Daily AI usage is enforced against both visitor and hashed-IP quota subjects. Workspace reset does not reset these counters.
+- Daily review-credit usage is enforced against both visitor and hashed-IP quota subjects. Workspace reset does not reset these counters.
 - `GEMINI_API_KEY` is read only inside `server-only` code. The client calls internal API routes, not Gemini directly.
 - `.env` files and `data/` are ignored by Git.
 

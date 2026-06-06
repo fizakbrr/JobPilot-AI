@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireGuest } from "@/lib/jobpilot/guest";
 import { RATE_LIMITS, rateLimit } from "@/lib/jobpilot/rate-limit";
+import { crossOriginMutationResponse } from "@/lib/jobpilot/request-guards";
 import { routeErrorResponse, validationErrorResponse } from "@/lib/jobpilot/route-errors";
 import { nowIso, transact } from "@/lib/jobpilot/store";
 import { idSchema, interviewPatchSchema } from "@/lib/jobpilot/validators";
@@ -13,6 +14,8 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     const limited = rateLimit(request, RATE_LIMITS.write);
     if (limited) return limited;
+    const crossOrigin = crossOriginMutationResponse(request);
+    if (crossOrigin) return crossOrigin;
 
     const guest = await requireGuest();
     const { id: rawId } = await context.params;

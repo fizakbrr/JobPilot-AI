@@ -2,7 +2,7 @@
 
 ## Near Term
 
-- Add route-handler tests for guest ownership, destructive actions, and AI quota behavior.
+- Add route-handler tests for guest ownership, destructive actions, and review-credit behavior.
 - Add Playwright smoke tests for onboarding, creating an application, and saving interview notes.
 - Split `components/jobpilot/jobpilot-app.tsx` into view, form, card, and hook modules.
 - Add import/export controls for workspace data.
@@ -11,7 +11,7 @@
 ## Medium Term
 
 - Introduce a storage adapter interface with JSON and durable database implementations.
-- Move rate limiting and AI quota counters to shared durable infrastructure for hosted demos.
+- Move rate limiting and review-credit counters to shared durable infrastructure for hosted demos.
 - Add analysis history per application.
 - Add a real help panel and keyboard shortcuts.
 - Add changelog discipline for public releases.

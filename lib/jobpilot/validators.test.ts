@@ -6,7 +6,7 @@ import {
 } from "@/lib/jobpilot/validators";
 
 const validApplication = {
-  companyName: "Acme",
+  companyName: "Northstar Labs",
   role: "Frontend Engineer",
   location: "Remote",
   salary: 120000,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireGuest } from "@/lib/jobpilot/guest";
 import { RATE_LIMITS, rateLimit } from "@/lib/jobpilot/rate-limit";
+import { crossOriginMutationResponse } from "@/lib/jobpilot/request-guards";
 import { routeErrorResponse, validationErrorResponse } from "@/lib/jobpilot/route-errors";
 import {
   addActivity,
@@ -36,6 +37,8 @@ export async function POST(request: Request) {
   try {
     const limited = rateLimit(request, RATE_LIMITS.write);
     if (limited) return limited;
+    const crossOrigin = crossOriginMutationResponse(request);
+    if (crossOrigin) return crossOrigin;
 
     const guest = await requireGuest();
     const parsed = applicationSchema.safeParse(await request.json());

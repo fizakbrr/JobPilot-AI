@@ -1,6 +1,6 @@
 # JobPilot AI
 
-JobPilot AI is an open-source job application workspace for people who want a calmer way to manage their search. It gives each browser a name-only workspace with an application board, resume guidance, interview prep, follow-up tracking, AI usage limits, and local data controls.
+JobPilot AI is an open-source job application workspace for people who want a calmer way to manage their search. It gives each browser a name-only workspace with an application board, resume guidance, interview prep, follow-up tracking, review-credit limits, and local data controls.
 
 The product tone is supportive and grounded. Job hunting is stressful, so the app focuses on clear next steps without turning setbacks into empty cheerleading.
 
@@ -49,9 +49,9 @@ Create `.env` from `.env.example`.
 | --- | --- | --- | --- |
 | `GEMINI_API_KEY` | No | Empty | Enables Gemini-backed resume analysis and interview question generation. Without it, JobPilot uses local fallback guidance and does not spend AI quota. |
 | `JOBPILOT_DATA_DIR` | No | `data/` locally, `/tmp/jobpilot` on Vercel | Directory for the local JSON database. |
-| `JOBPILOT_DAILY_AI_ACTION_LIMIT` | No | `3` | Daily AI action limit per visitor cookie. |
-| `JOBPILOT_DAILY_AI_IP_LIMIT` | No | `3` | Daily AI action limit per hashed client IP. |
-| `JOBPILOT_ABUSE_SALT` | Recommended for public demos | Local development salt | Salt used to hash IP-based AI quota subjects. Set this to a private random value in hosted demos. |
+| `JOBPILOT_DAILY_AI_ACTION_LIMIT` | No | `3` | Daily review-credit limit per visitor cookie. |
+| `JOBPILOT_DAILY_AI_IP_LIMIT` | No | `3` | Daily review-credit limit per hashed client IP. |
+| `JOBPILOT_ABUSE_SALT` | Recommended for public demos | Local development salt | Salt used to hash IP-based quota subjects. Set this to a private random value in hosted demos. |
 
 ## Scripts
 

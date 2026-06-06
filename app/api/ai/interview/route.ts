@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { generateInterviewQuestionsWithAI, toInterviewRecords } from "@/lib/jobpilot/ai";
 import { requireGuest } from "@/lib/jobpilot/guest";
 import { RATE_LIMITS, rateLimit, rateLimitByKey } from "@/lib/jobpilot/rate-limit";
+import { crossOriginMutationResponse } from "@/lib/jobpilot/request-guards";
 import { routeErrorResponse, validationErrorResponse } from "@/lib/jobpilot/route-errors";
 import {
   addActivity,
@@ -17,6 +18,8 @@ export async function POST(request: Request) {
   try {
     const limited = rateLimit(request, RATE_LIMITS.ai);
     if (limited) return limited;
+    const crossOrigin = crossOriginMutationResponse(request);
+    if (crossOrigin) return crossOrigin;
 
     const visitorId = await getOrCreateVisitorId();
     const visitorLimited = rateLimitByKey(`visitor:${visitorId}`, RATE_LIMITS.ai);
@@ -49,7 +52,7 @@ export async function POST(request: Request) {
 
     if (!quotaCheck.allowed) {
       return NextResponse.json(
-        { error: "Daily AI limit reached. You can keep tracking applications and come back tomorrow for more AI help.", quota: quotaCheck.quota },
+        { error: "Daily review limit reached. You can keep tracking applications and come back tomorrow for more generated guidance.", quota: quotaCheck.quota },
         { status: 429 },
       );
     }
